@@ -6,85 +6,45 @@
 #include "osapi.h"
 #include "espconn.h"
 #include "ws2812_i2s.h"
+#include "game.h"
 
-#define procTaskPrio        0
-#define procTaskQueueLen    1
-
-static volatile os_timer_t some_timer;
-uint8_t leds[20*3];
-int led = 0;
-signed char dir = 1;
-
-void user_rf_pre_init(void)
-{
-	//nothing.
-}
-
-//Tasks that happen all the time.
-
-os_event_t    procTaskQueue[procTaskQueueLen];
-
-static void ICACHE_FLASH_ATTR procTask(os_event_t *events)
-{
-	//CSTick( 0 );
-	system_os_post(procTaskPrio, 0, 0 );
-}
-
-//Timer event.
-static void ICACHE_FLASH_ATTR myTimer(void *arg)
-{
-    int i = 0;
-    for (i = 0; i < 20; i++)
-    {
-        if (i == led) {
-            leds[i*3] = 0; 
-            leds[i*3+1] = 0xff;
-            leds[i*3+2] = 0;
-        } else {
-            leds[i*3] = 0x05;
-            leds[i*3+1] = 0;
-            leds[i*3+2] = 0;
-        }
-    }
-    
-    if (dir == 1 && led == 19)
-    {
-        dir = -1;
-    } else if (dir == -1 && led == 0) {
-        dir = 1;
-    }
-    
-    led += dir;
-    
-    ws2812_push( leds, sizeof( leds ) );
-}
-
-void ICACHE_FLASH_ATTR charrx( uint8_t c )
-{
-	//Called from UART.
-}
+os_event_t procTaskQueue[1];
+void user_rf_pre_init(void){}
 
 void user_init(void)
 {
 	uart_init(BIT_RATE_115200, BIT_RATE_115200);
-	uart0_sendStr("\r\nesp8266 ws2812 driver\r\n");
+        os_printf("Welcome to Light-Pong\n");
         
-
-	//Add a process
-	system_os_task(procTask, procTaskPrio, procTaskQueue, procTaskQueueLen);
-
-	//Timer example
-	os_timer_disarm(&some_timer);
-	os_timer_setfn(&some_timer, (os_timer_func_t *)myTimer, NULL);
-	os_timer_arm(&some_timer, 10, 1);
-
+        // GPIO00 as input Player#1
+        // GPIO02 as input Player#2
+        PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0);
+        PIN_PULLUP_EN(PERIPHS_IO_MUX_GPIO0_U);
+        gpio_output_set(0, 0, 0, BIT0);
         
+        PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO2_U, FUNC_GPIO2);
+        PIN_PULLUP_EN(PERIPHS_IO_MUX_GPIO2_U);
+        gpio_output_set(0, 0, 0, BIT2);
+        
+	//Register game input monitor task
+	system_os_task(inputMonitor, 0, procTaskQueue, 1);
+
+	//Prepare frame timer
+	os_timer_disarm(&frameTimer);
+	os_timer_setfn(&frameTimer, (os_timer_func_t *)frameTimerCallback, NULL);
+        
+        //Prepare score timer
+        os_timer_disarm(&scoreTimer);
+        os_timer_setfn(&scoreTimer, (os_timer_func_t *)scoreTimerCallback, NULL);
+
+        // Init game (probably better to move timers to game.c as well))
 	ws2812_init();
-	system_os_post(procTaskPrio, 0, 0 );
+        prepareGame();
+        
+        //Start input monitor
+	system_os_post(0, 0, 0);
 }
 
-
-//There is no code in this project that will cause reboots if interrupts are disabled.
 void EnterCritical()
 {
 }

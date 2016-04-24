@@ -122,6 +122,30 @@ uart1_write_char(char c)
     uart_tx_one_char(UART1, c);
   }
 }
+
+/******************************************************************************
+ * FunctionName : uart1_write_char
+ * Description  : Internal used function
+ *                Do some special deal while tx char is '\r' or '\n'
+ * Parameters   : char c - character to tx
+ * Returns      : NONE
+*******************************************************************************/
+LOCAL void ICACHE_FLASH_ATTR
+uart0_write_char(char c)
+{
+  if (c == '\n')
+  {
+    uart_tx_one_char(UART0, '\r');
+    uart_tx_one_char(UART0, '\n');
+  }
+  else if (c == '\r')
+  {
+  }
+  else
+  {
+    uart_tx_one_char(UART0, c);
+  }
+}
 /******************************************************************************
  * FunctionName : uart0_tx_buffer
  * Description  : use uart0 to transfer buffer
@@ -164,7 +188,7 @@ uart0_sendStr(const char *str)
  * Returns      : NONE
 *******************************************************************************/
 
-extern void charrx( uint8_t c );
+//extern void charrx( uint8_t c );
 
 LOCAL void
 uart0_rx_intr_handler(void *para)
@@ -185,7 +209,7 @@ uart0_rx_intr_handler(void *para)
 		system_restart();
 	}
 
-	charrx( v );
+	//charrx( v );
 
 }
 
@@ -207,7 +231,7 @@ uart_init(UartBautRate uart0_br, UartBautRate uart1_br)
   ETS_UART_INTR_ENABLE();
 
   // install uart1 putc callback
-  os_install_putc1((void *)uart1_write_char);
+  os_install_putc1((void *)uart0_write_char);
 }
 
 void ICACHE_FLASH_ATTR

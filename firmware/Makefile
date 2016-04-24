@@ -15,7 +15,8 @@ TARGET_OUT:=image.elf
 	
 SRCS:=driver/uart.c \
 	user/ws2812_i2s.c \
-	user/user_main.c 
+	user/user_main.c \
+	user/game.c
 
 XTLIB:=$(SDK)/lib
 XTGCCLIB:=$(GCC_FOLDER)/lib/gcc/xtensa-lx106-elf/4.8.2/libgcc.a
@@ -23,7 +24,7 @@ FOLDERPREFIX:=$(GCC_FOLDER)/bin
 PREFIX:=$(FOLDERPREFIX)/xtensa-lx106-elf-
 CC:=$(PREFIX)gcc
 
-CFLAGS:=-mlongcalls -I$(SDK)/include -Imyclib -Iinclude -Iuser -Os -I$(SDK)/include/ -Icommon -DICACHE_FLASH
+CFLAGS:=-mlongcalls -Iinclude -Iuser -Idriver -I$(SDK)/include -Os -DICACHE_FLASH
 
 LDFLAGS_CORE:=\
 	-nostdlib \
