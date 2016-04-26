@@ -16,7 +16,9 @@ TARGET_OUT:=image.elf
 SRCS:=driver/uart.c \
 	user/ws2812_i2s.c \
 	user/user_main.c \
-	user/game.c
+	user/game.c \
+	user/network.c \
+
 
 XTLIB:=$(SDK)/lib
 XTGCCLIB:=$(GCC_FOLDER)/lib/gcc/xtensa-lx106-elf/4.8.2/libgcc.a

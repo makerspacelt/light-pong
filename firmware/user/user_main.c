@@ -7,6 +7,7 @@
 #include "espconn.h"
 #include "ws2812_i2s.h"
 #include "game.h"
+#include "network.h"
 
 os_event_t procTaskQueue[1];
 void user_rf_pre_init(void){}
@@ -36,6 +37,8 @@ void user_init(void)
         //Prepare score timer
         os_timer_disarm(&scoreTimer);
         os_timer_setfn(&scoreTimer, (os_timer_func_t *)scoreTimerCallback, NULL);
+
+        initNetwork();
 
         // Init game (probably better to move timers to game.c as well))
 	ws2812_init();
