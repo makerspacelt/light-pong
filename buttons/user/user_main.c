@@ -6,17 +6,48 @@
 #include "gpio.h"
 
 os_event_t procTaskQueue[1];
+
+volatile os_timer_t debounceTimer;
+
 uint8_t button = 1;
+uint8_t debounceValue = 1;
+uint8_t lastSent = 1;
 
 void user_rf_pre_init(void){}
 
 // System task which will monitor players input
 void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
+{   
+    if (lastSent != button) {
+        if (sendButtonData(button) == 0) {
+            lastSent = button;
+        }
+        
+        system_os_post(0, 0, 0);
+        return;
+    }
+    
+    uint8_t current = GPIO_INPUT_GET(0);
+    
+    if (current != button) {
+        debounceValue = current;
+        
+        os_timer_arm(&debounceTimer, 10, 0);       
+        return;
+    }
+    
+    system_os_post(0, 0, 0);
+}
+
+void ICACHE_FLASH_ATTR debounceCallback(void *arg)
 {
     uint8_t current = GPIO_INPUT_GET(0);
-    if (current != button) {
+    if (debounceValue == current) {
         button = current;
-        sendButtonData(button);
+        
+        if (sendButtonData(button) == 0) {
+            lastSent = button;
+        }
     }
     
     system_os_post(0, 0, 0 );
@@ -33,6 +64,10 @@ void user_init(void)
         
         //Register game input monitor task
 	system_os_task(inputMonitor, 0, procTaskQueue, 1);
+        
+        //Prepare frame timer
+	os_timer_disarm(&debounceTimer);
+	os_timer_setfn(&debounceTimer, (os_timer_func_t *)debounceCallback, NULL);
         
         initNetwork();
 }

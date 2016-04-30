@@ -111,10 +111,10 @@ void ICACHE_FLASH_ATTR initNetwork()
     os_timer_arm(&ipTimer, 100, 0);   
 }
 
-void ICACHE_FLASH_ATTR sendButtonData(uint8_t state)
+sint8 ICACHE_FLASH_ATTR sendButtonData(uint8_t state)
 {
     uint8_t data[2] = {CMD_BUTTON, state};
-    espconn_send(conn, data, 2);
+    return espconn_send(conn, data, 2);
 }
 
 void ICACHE_FLASH_ATTR CBConnected(void *arg)

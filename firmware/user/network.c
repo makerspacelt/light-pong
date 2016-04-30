@@ -4,6 +4,7 @@
 #include "espconn.h"
 #include "mem.h"
 #include "network.h"
+#include "game.h"
 
 static struct espconn *contServer;
 
@@ -92,16 +93,23 @@ void ICACHE_FLASH_ATTR controllerDataReceived(void *arg, char *pdata, unsigned s
 {
     struct espconn *connection = (struct espconn *)arg;
     char response[] = {0, 0, 0};
-
-    switch (*pdata++) {
+    char cmd = *pdata++;
+    char msg = *pdata;
+    
+    os_printf("GOT DATA: 0x%2x 0x%2x", cmd, msg);
+    
+    switch (cmd) {
         case CMD_PLAYER:
             if (*pdata++ == 0) {
                 response[0] = CMD_PLAYER;
                 response[1] = 2;
+                
+                player2.connection = connection;
+                player2.button = 1;
             }
             break;
         case CMD_BUTTON:
-            os_printf("Got button: %d\n", *pdata++);
+            player2.button = msg;
             break;
     }
     

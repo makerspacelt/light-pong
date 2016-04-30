@@ -12,7 +12,7 @@
 
 
 void initNetwork();
-void sendButtonData(uint8_t state);
+sint8 sendButtonData(uint8_t state);
 
 void CBConnected(void *arg);
 void CBDisconnected(void *arg);
