@@ -7,6 +7,8 @@
 #include "queue.h"
 
 static os_timer_t ipTimer;
+static uint8_t player = 0;
+struct espconn *conn;
 
 /**
  * Convert 32 bit int to array of 4 8 bit ints
@@ -109,13 +111,18 @@ void ICACHE_FLASH_ATTR initNetwork()
     os_timer_arm(&ipTimer, 100, 0);   
 }
 
+void ICACHE_FLASH_ATTR sendButtonData(uint8_t state)
+{
+    uint8_t data[2] = {CMD_BUTTON, state};
+    espconn_send(conn, data, 2);
+}
+
 void ICACHE_FLASH_ATTR CBConnected(void *arg)
 {
-    struct espconn *conn = (struct espconn *)arg;
+    conn = (struct espconn *)arg;
     
     espconn_regist_disconcb(conn, CBDisconnected);
     espconn_regist_recvcb(conn, CBDataReceived);
-    espconn_regist_sentcb(conn, CBDataSent);
     
     // Keep connection alive (basically reconnect on failure))
     sint8 setop = espconn_set_opt(conn, ESPCONN_KEEPALIVE);
@@ -133,6 +140,10 @@ void ICACHE_FLASH_ATTR CBConnected(void *arg)
     sint8 status2 = espconn_set_keepalive(conn, ESPCONN_KEEPCNT, &keeplive);
     
     os_printf("Connected, KeepAlive status: %d-%d-%d-%d\n", setop, status, status1, status2);
+    
+    // Register or get player number
+    uint8_t data[] = {CMD_PLAYER, player};
+    espconn_send(conn, data, sizeof(data));
 }
 
 void ICACHE_FLASH_ATTR CBDisconnected(void *arg)
@@ -143,17 +154,17 @@ void ICACHE_FLASH_ATTR CBDisconnected(void *arg)
 void ICACHE_FLASH_ATTR CBReconnect(void *arg, sint8 err)
 {
     os_printf("Reconnected: %d \n", err);
+    
     os_timer_arm(&ipTimer, 100, 0); 
 }
 
 void ICACHE_FLASH_ATTR CBDataReceived(void *arg, char *pdata, unsigned short len)
 {
-    os_printf("Got data:\n");
-    os_printf("0x%02x\n", pdata[0]);
-    os_printf("0x%02x\n", pdata[1]);
-}
-
-void ICACHE_FLASH_ATTR CBDataSent(void *arg)
-{
-    os_printf("SENT data\n");
+    switch(*pdata++) {
+        case CMD_PLAYER:
+            player = *pdata++;
+            os_printf("Player assigned: %d\n", player);
+            system_os_post(0, 0, 0);
+            break;
+    }
 }

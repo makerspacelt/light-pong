@@ -76,9 +76,6 @@ void ICACHE_FLASH_ATTR controllerConnected(void *arg)
     espconn_regist_reconcb(connection, controllerReconnected);
     espconn_regist_recvcb(connection, controllerDataReceived);
     espconn_regist_sentcb(connection, controllerDataSent);
-    
-    uint8_t data[] = {0x01, 0x02};
-    espconn_send(connection, data, 2);
 }
 
 void ICACHE_FLASH_ATTR controllerDisconnected(void *arg)
@@ -93,7 +90,24 @@ void ICACHE_FLASH_ATTR controllerReconnected(void *arg, sint8 err)
 
 void ICACHE_FLASH_ATTR controllerDataReceived(void *arg, char *pdata, unsigned short len)
 {
-    os_printf("GOT data\n");
+    struct espconn *connection = (struct espconn *)arg;
+    char response[] = {0, 0, 0};
+
+    switch (*pdata++) {
+        case CMD_PLAYER:
+            if (*pdata++ == 0) {
+                response[0] = CMD_PLAYER;
+                response[1] = 2;
+            }
+            break;
+        case CMD_BUTTON:
+            os_printf("Got button: %d\n", *pdata++);
+            break;
+    }
+    
+    if (response[0]) {
+        espconn_send(connection, response, 3);
+    }
 }
 
 void ICACHE_FLASH_ATTR controllerDataSent(void *arg)

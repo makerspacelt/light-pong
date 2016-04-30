@@ -1,6 +1,9 @@
 #ifndef NETWORK_H
 #define NETWORK_H
 
+#define CMD_PLAYER 0x01
+#define CMD_BUTTON 0x02
+
 void initNetwork();
 void startTcpController();
 
