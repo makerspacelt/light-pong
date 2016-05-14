@@ -9,12 +9,22 @@
 #include "game.h"
 #include "network.h"
 
+// Define this to remove all UART output
+#define NODEBUG
+
 os_event_t procTaskQueue[1];
+
 void user_rf_pre_init(void){}
+void nodebug(char c){}
 
 void user_init(void)
 {
 	uart_init(BIT_RATE_115200, BIT_RATE_115200);
+        
+        #ifdef NODEBUG
+        os_install_putc1(nodebug);
+        #endif
+        
         os_printf("Welcome to Light-Pong\n");
         
         // GPIO00 as input Player#1
@@ -37,7 +47,18 @@ void user_init(void)
         //Prepare score timer
         os_timer_disarm(&scoreTimer);
         os_timer_setfn(&scoreTimer, (os_timer_func_t *)scoreTimerCallback, NULL);
+        
+        // Prepare winner animation timer
+        os_timer_disarm(&winTimer);
+        os_timer_setfn(&winTimer, (os_timer_func_t *)winTimerCallback, NULL);
 
+        #ifdef EMULATE_P1
+                player1.assigned = 1;
+                player1.button = 1;
+                player1.nr = 1;
+        #endif
+        
+        //Init network communications
         initNetwork();
 
         // Init game (probably better to move timers to game.c as well))

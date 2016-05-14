@@ -95,25 +95,34 @@ void ICACHE_FLASH_ATTR controllerDataReceived(void *arg, char *pdata, unsigned s
     char response[] = {0, 0, 0};
     char cmd = *pdata++;
     char msg = *pdata;
+    Player *player;
     
-    os_printf("GOT DATA: 0x%2x 0x%2x", cmd, msg);
+    os_printf("GOT DATA: 0x%02x 0x%02x\n", cmd, msg);
     
     switch (cmd) {
-        case CMD_PLAYER:
-            if (*pdata++ == 0) {
+        case CMD_PLAYER:           
+            player = getPlayer(msg);
+
+            player->assigned = 1;
+            player->button = 1;
+            player->connection = connection;
+
+            if (msg == 0) {
                 response[0] = CMD_PLAYER;
-                response[1] = 2;
-                
-                player2.connection = connection;
-                player2.button = 1;
+                response[1] = player->nr;
             }
+            
             break;
         case CMD_BUTTON:
-            player2.button = msg;
+            player = getPlayerByConnection(connection);
+            player->button = msg;
+            
+            os_printf("PLAYER BUTTON: %d, 0x%02x\n", player->nr, msg);
             break;
     }
     
     if (response[0]) {
+        os_printf("RESPONDING: 0x%02x 0x%02x 0x%02x\n", response[0], response[1], response[2]);
         espconn_send(connection, response, 3);
     }
 }

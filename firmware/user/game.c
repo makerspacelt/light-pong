@@ -14,16 +14,41 @@
 uint8_t frameBuffer[LEDS*3];
 
 int led = 0;
-uint8_t gameMode = 0;
+game_mode gameMode = START;
 uint8_t isSafe = 0;
 uint8_t strobe = 0;
+uint8_t scoreRepeat = 0;
 
 uint8_t player2Button = 1;
 
-struct Player player1;
-struct Player player2;
+Player player1 = {1, 1, NULL, false, 0};
+Player player2 = {2, 1, NULL, false, 0};
 
 signed char dir = 1;
+
+Player *getPlayerByConnection(struct espconn *connection)
+{
+    if (player1.connection == connection) {
+        return &player1;
+    } else {
+        return &player2;
+    }
+}
+
+Player *getPlayer(uint8_t nr)
+{
+    if (nr == 0) {
+        if (!player1.assigned) {
+            return &player1;
+        } else {
+            return &player2;
+        }
+    } else if(nr == 1) {
+        return &player1;
+    } else {
+        return &player2;
+    }
+}
 
 // Prepare player start zone and game variables
 void ICACHE_FLASH_ATTR prepareGame()
@@ -45,40 +70,60 @@ void ICACHE_FLASH_ATTR prepareGame()
     }
     
     ws2812_push(frameBuffer, sizeof(frameBuffer));
-    gameMode = 0;
+    gameMode = START;
 }
 
 // System task which will monitor players input
 void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
 {
-    if (gameMode == 0) {
-        if ((dir == 1 && GPIO_INPUT_GET(0) == 0) || dir == -1 && player2.button == 0) {
-            gameMode = 1;
+    #ifdef EMULATE_P1
+        player1.button = GPIO_INPUT_GET(0);
+    #endif
+    
+    if (gameMode == START) {
+        if ((dir == 1 && !player1.button) || dir == -1 && !player2.button) {
+            gameMode = MOVING;
             os_timer_arm(&frameTimer, SPEED, 1);
         }
-    }else if(gameMode == 1) {
+    }else if(gameMode == MOVING) {
         if (dir == 1) {
-            if (! player2.button) {
+            if (!player2.button) {
                 if (isSafe) {
                     led = LEDS - 1;
                     dir = -1;
                 } else {
-                    gameMode = 3;
                     os_timer_disarm(&frameTimer);
-                    os_timer_arm(&scoreTimer, 10, 1); 
+                    
+                    gameMode = SCORE_PHASE1;
+                    player1.score++;
+                    os_printf("SCORE %d VS %d\n", player1.score, player2.score);
+                    os_timer_arm(&scoreTimer, 5, 1); 
                 }
             }
         } else {
-            if (! GPIO_INPUT_GET(0)) {
+            if (!player1.button) {
                 if (isSafe) {
                     led = 0;
                     dir = 1;
                 } else {
-                    gameMode = 3;
                     os_timer_disarm(&frameTimer);
-                    os_timer_arm(&scoreTimer, 10, 1);
+                    
+                    gameMode = SCORE_PHASE1;
+                    player2.score++;
+                    os_printf("SCORE %d VS %d\n", player1.score, player2.score);                    
+                    os_timer_arm(&scoreTimer, 5, 1);
                 }
             }
+        }
+    }else if (gameMode == WIN) {
+        if (player1.button == 0 && player2.button == 0) {
+            os_timer_disarm(&winTimer);
+            player1.button = player2.button = 0;
+            player1.score = player2.score = 0;
+            
+            strobe = 0;
+            scoreRepeat = 0;
+            prepareGame();
         }
     }
     
@@ -88,47 +133,86 @@ void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
 // A timer callback used to display fancy score lines
 void ICACHE_FLASH_ATTR scoreTimerCallback(void *arg)
 {
-    int i;
-    if ((strobe % 2) == 0) {
-        uint8_t red, green, blue = 0x00;
-        if (dir == 1) {
-            green = 0xFF;
-        } else {
-            blue = 0xFF;
+    int i;   
+    for (i = 0; i < LEDS; i++) {
+        frameBuffer[i*3] = 0x00;
+        frameBuffer[i*3+1] = 0x00;
+        frameBuffer[i*3+2] = 0x00;
+        if (i < player1.score * SCORE_LEDS) {
+            frameBuffer[i*3] = strobe; // Player1 score
+        } else if (i < LEDS - MAX_SCORE * SCORE_LEDS && i >= MAX_SCORE * SCORE_LEDS) {
+            frameBuffer[i*3+1] = strobe; // Center line
+        } else if (i >= LEDS - player2.score * SCORE_LEDS) {
+            frameBuffer[i*3+2] = strobe; // Player2 score
         }
-        for (i = 0; i < LEDS; i++) {
-            frameBuffer[i*3] = green;
-            frameBuffer[i*3+1] = red;
-            frameBuffer[i*3+2] = blue;
+    }
+    ws2812_push(frameBuffer, sizeof(frameBuffer));
+   
+    if (gameMode == SCORE_PHASE1) {
+        strobe += 10;
+        if (strobe >= 250) {
+            gameMode = SCORE_PHASE2;
         }
-        os_timer_arm(&scoreTimer, 100, 1);
     } else {
-        for (i = 0; i < LEDS; i++) {
-            frameBuffer[i*3] = 0x00;
-            frameBuffer[i*3+1] = 0x00;
-            frameBuffer[i*3+2] = 0x00;
+        strobe -= 10;
+        if(strobe <= 10) {
+            gameMode = SCORE_PHASE1;
+            scoreRepeat++;
         }
-        os_timer_arm(&scoreTimer, 50, 1);
+    }
+    
+    if (scoreRepeat >= 3) {
+        os_timer_disarm(&scoreTimer);
+        
+        scoreRepeat = 0;
+        strobe = 0;
+        dir = 0 - dir;
+        
+        if (player1.score == MAX_SCORE || player2.score == MAX_SCORE) {
+            gameMode = WIN;
+            os_timer_arm(&winTimer, 40, 1);
+        } else {
+            prepareGame();
+        }
+    }
+}
+
+void ICACHE_FLASH_ATTR winTimerCallback(void *arg)
+{
+    int i;   
+    for (i = 0; i < LEDS; i++) {
+        frameBuffer[i*3] = 0x00;
+        frameBuffer[i*3+1] = 255 - strobe;
+        frameBuffer[i*3+2] = 0x00;
+        
+        if (player1.score == MAX_SCORE) {
+            frameBuffer[i*3] = strobe;
+        } else {
+            frameBuffer[i*3+2] = strobe;
+        }
     }
     ws2812_push(frameBuffer, sizeof(frameBuffer));
     
-    strobe++;
-    if (strobe >= 11) {
-        os_timer_disarm(&scoreTimer);
-        
-        strobe = 0;
-        dir = 0 - dir;
-        prepareGame();
+    if (scoreRepeat == 0) {
+        strobe += 10;
+        if (strobe >= 250) {
+            scoreRepeat = 1;
+        }
+    } else {
+        strobe -= 10;
+        if (strobe <= 10) {
+            scoreRepeat = 0;
+        }
     }
 }
 
 // A timer callback used to display each frame of moving light in-play
 void ICACHE_FLASH_ATTR frameTimerCallback(void *arg)
 {
-    if (gameMode == 2) {
-        gameMode = 3;
+    if (gameMode == LAST_FRAME) {
+        gameMode = SCORE_PHASE1;
         os_timer_disarm(&frameTimer);
-        os_timer_arm(&scoreTimer, 10, 1);
+        os_timer_arm(&scoreTimer, 5, 1);
         
         if (dir == 1) {
             led = 0;
@@ -148,7 +232,7 @@ void ICACHE_FLASH_ATTR frameTimerCallback(void *arg)
     int i = 0;
     for (i = 0; i < LEDS; i++)
     {
-        if (i <= led + 3 && i >= led - 3) {
+        if (i <= led + TRAIL && i >= led - TRAIL) {
             frameBuffer[i*3] = 0xff; 
             frameBuffer[i*3+1] = 0xff;
             frameBuffer[i*3+2] = 0xff;
@@ -166,9 +250,13 @@ void ICACHE_FLASH_ATTR frameTimerCallback(void *arg)
     }
     
     if (dir == 1 && led == LEDS - 1) {
-        gameMode = 2;
+        player1.score++;
+        os_printf("SCORE %d VS %d\n", player1.score, player2.score);
+        gameMode = LAST_FRAME;
     } else if (dir == -1 && led == 0) {
-        gameMode = 2;
+        player2.score++;
+        os_printf("SCORE %d VS %d\n", player1.score, player2.score);
+        gameMode = LAST_FRAME;
     }
     
     led += dir;
