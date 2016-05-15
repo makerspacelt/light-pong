@@ -1,0 +1,12 @@
+[Unit]
+Description=Service for sound manager
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/bin/bash -c '/home/lightpong/soundEngine/sounder.sh'
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+

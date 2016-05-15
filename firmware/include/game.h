@@ -19,8 +19,19 @@ typedef enum {
     LAST_FRAME,
     SCORE_PHASE1,
     SCORE_PHASE2,
-    WIN 
+    WIN
 } game_mode;
+
+// Sound events definition
+typedef enum {
+    SOUND_DUMMY,
+    SOUND_SCORE, 
+    SOUND_SCORE_FIRST,
+    SOUND_PONG,
+    SOUND_VICTORY,
+    SOUND_START,
+    SOUND_MUSIC
+} sound_event;
 
 // Player definition
 typedef struct {
@@ -35,7 +46,7 @@ volatile os_timer_t frameTimer;
 volatile os_timer_t scoreTimer;
 volatile os_timer_t winTimer;
 
-extern uint8_t player2Button;
+extern game_mode gameMode;
 extern Player player1;
 extern Player player2;
 
@@ -48,5 +59,7 @@ void winTimerCallback(void *arg);
 
 Player *getPlayer(uint8_t nr);
 Player *getPlayerByConnection(struct espconn *connection);
+
+void callSound(uint8_t event);
 
 #endif /* GAME_H */

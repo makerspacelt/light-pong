@@ -7,6 +7,8 @@
 #include "game.h"
 
 static struct espconn *contServer;
+struct espconn *soundManager;
+bool soundSending = false;
 
 void ICACHE_FLASH_ATTR initNetwork()
 {
@@ -37,6 +39,9 @@ void ICACHE_FLASH_ATTR initNetwork()
             sc.ssid_len,
             wifi_softap_dhcps_status()
     );
+    
+    os_timer_disarm(&soundTimer);
+    os_timer_setfn(&soundTimer, (os_timer_func_t *)soundTimerCallback, NULL);
 
     startTcpController();
 }
@@ -57,10 +62,12 @@ void ICACHE_FLASH_ATTR startTcpController()
     contServer->proto.tcp->local_port = 2048;
 
     espconn_regist_connectcb(contServer, controllerConnected);
-
+    
     // Start listening
     sint8 status = espconn_accept(contServer);
-    os_printf("Server created status: %d\n", status);
+    sint8 conn_stat = espconn_tcp_set_max_con_allow(contServer, 5);
+    
+    os_printf("Server created status: %d connections: %d\n", status, conn_stat);
 
     // Idle time
     espconn_regist_time(contServer, 3600, 0);
@@ -81,6 +88,7 @@ void ICACHE_FLASH_ATTR controllerConnected(void *arg)
 
 void ICACHE_FLASH_ATTR controllerDisconnected(void *arg)
 {
+    os_timer_disarm(&soundTimer);
     os_printf("Disconnected\n");
 }
 
@@ -119,6 +127,13 @@ void ICACHE_FLASH_ATTR controllerDataReceived(void *arg, char *pdata, unsigned s
             
             os_printf("PLAYER BUTTON: %d, 0x%02x\n", player->nr, msg);
             break;
+        case CMD_SOUND:
+            os_printf("Sound manager connected\n");
+            soundManager = connection;
+            soundSending = false;
+            
+            os_timer_arm(&soundTimer, 500, 1);
+            break;       
     }
     
     if (response[0]) {
@@ -129,5 +144,22 @@ void ICACHE_FLASH_ATTR controllerDataReceived(void *arg, char *pdata, unsigned s
 
 void ICACHE_FLASH_ATTR controllerDataSent(void *arg)
 {
-    os_printf("SENT data\n");
+    struct espconn *connection = (struct espconn *)arg;
+    
+    if (connection == soundManager) {
+        soundSending = false;
+        os_printf("SENT soundmanager\n");
+    }
+}
+
+void ICACHE_FLASH_ATTR soundTimerCallback(void *arg)
+{
+    if (soundSending) {
+        return;
+    }
+    uint8_t data[1]= {0};
+    sint8 status = espconn_send(soundManager, data, 1);
+    if (status == 0) {
+        soundSending = true;
+    }
 }

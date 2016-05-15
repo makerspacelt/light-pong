@@ -63,7 +63,9 @@ void user_init(void)
 
         // Init game (probably better to move timers to game.c as well))
 	ws2812_init();
-        prepareGame();
+        
+        gameMode = WIN;
+        os_timer_arm(&winTimer, 40, 1);
         
         //Start input monitor
 	system_os_post(0, 0, 0);

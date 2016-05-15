@@ -19,8 +19,6 @@ uint8_t isSafe = 0;
 uint8_t strobe = 0;
 uint8_t scoreRepeat = 0;
 
-uint8_t player2Button = 1;
-
 Player player1 = {1, 1, NULL, false, 0};
 Player player2 = {2, 1, NULL, false, 0};
 
@@ -91,12 +89,14 @@ void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
                 if (isSafe) {
                     led = LEDS - 1;
                     dir = -1;
+                    callSound(SOUND_PONG);
                 } else {
                     os_timer_disarm(&frameTimer);
                     
                     gameMode = SCORE_PHASE1;
                     player1.score++;
                     os_printf("SCORE %d VS %d\n", player1.score, player2.score);
+                    callSound(SOUND_SCORE);
                     os_timer_arm(&scoreTimer, 5, 1); 
                 }
             }
@@ -105,12 +105,14 @@ void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
                 if (isSafe) {
                     led = 0;
                     dir = 1;
+                    callSound(SOUND_PONG);
                 } else {
                     os_timer_disarm(&frameTimer);
                     
                     gameMode = SCORE_PHASE1;
                     player2.score++;
-                    os_printf("SCORE %d VS %d\n", player1.score, player2.score);                    
+                    os_printf("SCORE %d VS %d\n", player1.score, player2.score);
+                    callSound(SOUND_SCORE);
                     os_timer_arm(&scoreTimer, 5, 1);
                 }
             }
@@ -118,12 +120,13 @@ void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
     }else if (gameMode == WIN) {
         if (player1.button == 0 && player2.button == 0) {
             os_timer_disarm(&winTimer);
-            player1.button = player2.button = 0;
+            player1.button = player2.button = 1;
             player1.score = player2.score = 0;
             
+            callSound(SOUND_MUSIC);
             strobe = 0;
             scoreRepeat = 0;
-            prepareGame();
+            prepareGame();           
         }
     }
     
@@ -253,12 +256,41 @@ void ICACHE_FLASH_ATTR frameTimerCallback(void *arg)
         player1.score++;
         os_printf("SCORE %d VS %d\n", player1.score, player2.score);
         gameMode = LAST_FRAME;
+        callSound(SOUND_SCORE);
+        
     } else if (dir == -1 && led == 0) {
         player2.score++;
         os_printf("SCORE %d VS %d\n", player1.score, player2.score);
         gameMode = LAST_FRAME;
+        callSound(SOUND_SCORE);
     }
     
     led += dir;
     ws2812_push(frameBuffer, sizeof(frameBuffer));
+}
+
+void ICACHE_FLASH_ATTR callSound(uint8_t event)
+{
+    uint8_t data[1];
+            
+    switch (event) {
+        case SOUND_SCORE:
+            if (player1.score + player2.score == 1) {
+                data[0] = SOUND_SCORE_FIRST;
+            } else if(player1.score == MAX_SCORE || player2.score == MAX_SCORE) {
+                data[0] = SOUND_VICTORY;
+            } else {
+                data[0] = SOUND_SCORE;
+            }
+            break;
+        default:
+            data[0] = event;
+            break;
+    }
+    
+     sint8 status = espconn_send(soundManager, data, 1);
+     if (status == 0) {
+         soundSending = true;
+     }
+     os_printf("Sound manager: %d\n", status);
 }
