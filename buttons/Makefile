@@ -14,6 +14,7 @@ FW_FILE_2:=0x40000.bin
 TARGET_OUT:=image.elf
 	
 SRCS:=driver/uart.c \
+	user/ws2812_i2s.c \
 	user/user_main.c \
 	user/network.c \
 

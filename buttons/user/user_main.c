@@ -4,14 +4,21 @@
 #include "network.h"
 #include "os_type.h"
 #include "gpio.h"
+#include "ws2812_i2s.h"
+
+#define LEDS 28
 
 os_event_t procTaskQueue[1];
 
 volatile os_timer_t debounceTimer;
+volatile os_timer_t ledTimer;
 
 uint8_t button = 1;
 uint8_t debounceValue = 1;
 uint8_t lastSent = 1;
+
+uint8_t frameBuffer[LEDS*3];
+uint8_t led = 0;
 
 void user_rf_pre_init(void){}
 
@@ -53,6 +60,50 @@ void ICACHE_FLASH_ATTR debounceCallback(void *arg)
     system_os_post(0, 0, 0 );
 }
 
+void ledCallback(void *arg)
+{
+    int i;
+    
+    for (i = 0; i < LEDS; i++ ) {
+        frameBuffer[i*3] = 0x00;
+        frameBuffer[i*3+1] = 0x00;
+        frameBuffer[i*3+2] = 0x00;
+        if (!connected) {
+            if (i % 2 == 0) {
+                frameBuffer[i*3] = 0x20;
+                frameBuffer[i*3+1] = 0x20;
+                frameBuffer[i*3+2] = 0x20;
+            }
+        } else {
+            if (!button) {
+                if (player == 1) {
+                    frameBuffer[i*3+2] = 0x30;
+                } else {
+                    frameBuffer[i*3] = 0x10;
+                    frameBuffer[i*3+1] = 0x35;
+                }
+            } else if (i == led) {
+                if (player == 1) {
+                    frameBuffer[i*3+2] = 0xFF;
+                } else {
+                    frameBuffer[i*3] = 0x50;
+                    frameBuffer[i*3+1] = 0xFF;
+                }
+            }
+        }
+    }
+    
+    ws2812_push(frameBuffer, sizeof(frameBuffer));
+    
+    if (connected) {
+        led++;
+    }
+    
+    if (led > LEDS) {
+        led = 0;
+    }
+}
+
 void user_init(void)
 {
 	uart_init(BIT_RATE_115200, BIT_RATE_115200);
@@ -61,6 +112,14 @@ void user_init(void)
         PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0);
         PIN_PULLUP_EN(PERIPHS_IO_MUX_GPIO0_U);
         gpio_output_set(0, 0, 0, BIT0);
+        
+        ws2812_init();
+        
+        //Prepare frame timer
+	os_timer_disarm(&ledTimer);
+	os_timer_setfn(&ledTimer, (os_timer_func_t *)ledCallback, NULL);
+        os_timer_arm(&ledTimer, 30, 1);
+
         
         //Register game input monitor task
 	system_os_task(inputMonitor, 0, procTaskQueue, 1);

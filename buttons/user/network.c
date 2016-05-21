@@ -7,8 +7,10 @@
 #include "queue.h"
 
 static os_timer_t ipTimer;
-static uint8_t player = 0;
+uint8_t player = 0;
 struct espconn *conn;
+bool connected = 0;
+
 
 /**
  * Convert 32 bit int to array of 4 8 bit ints
@@ -144,16 +146,20 @@ void ICACHE_FLASH_ATTR CBConnected(void *arg)
     // Register or get player number
     uint8_t data[] = {CMD_PLAYER, player};
     espconn_send(conn, data, sizeof(data));
+    
+    connected = true;
 }
 
 void ICACHE_FLASH_ATTR CBDisconnected(void *arg)
 {
     os_printf("Disconnected\n");
+    connected = false;
 }
 
 void ICACHE_FLASH_ATTR CBReconnect(void *arg, sint8 err)
 {
     os_printf("Reconnected: %d \n", err);
+    connected = false;
     
     os_timer_arm(&ipTimer, 100, 0); 
 }
