@@ -9,6 +9,7 @@
 static struct espconn *contServer;
 struct espconn *soundManager;
 bool soundSending = false;
+uint8_t lastConnected = 0;
 
 void ICACHE_FLASH_ATTR initNetwork()
 {
@@ -109,11 +110,13 @@ void ICACHE_FLASH_ATTR controllerDataReceived(void *arg, char *pdata, unsigned s
     
     switch (cmd) {
         case CMD_PLAYER:           
-            player = getPlayer(msg);
+            player = getPlayer(msg, lastConnected);
 
             player->assigned = 1;
             player->button = 1;
             player->connection = connection;
+            
+            lastConnected = player->nr;
 
             if (msg == 0) {
                 response[0] = CMD_PLAYER;
@@ -132,7 +135,7 @@ void ICACHE_FLASH_ATTR controllerDataReceived(void *arg, char *pdata, unsigned s
             soundManager = connection;
             soundSending = false;
             
-            os_timer_arm(&soundTimer, 500, 1);
+            os_timer_arm(&soundTimer, 200, 1);
             break;       
     }
     
@@ -148,7 +151,7 @@ void ICACHE_FLASH_ATTR controllerDataSent(void *arg)
     
     if (connection == soundManager) {
         soundSending = false;
-        os_printf("SENT soundmanager\n");
+        os_printf("S PING\n");
     }
 }
 

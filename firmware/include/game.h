@@ -1,16 +1,16 @@
 #ifndef GAME_H
 #define GAME_H
 
-#define LEDS 20     // total ammount of leds
-#define SAFEZONE 4
-#define SPEED 30    // single frame speed in ms
-#define TRAIL 1
+#define LEDS 300     // total ammount of leds
+#define SAFEZONE 30
+#define SPEED 4    // single frame speed in ms
+#define TRAIL 2
 
-#define MAX_SCORE 9 // score limit
-#define SCORE_LEDS 1 // how much leds to light per 1 point
+#define MAX_SCORE 10 // score limit
+#define SCORE_LEDS 14 // how much leds to light per 1 point
 
 // Player1 uses GPIO0 from this esp instead of separate esp
-#define EMULATE_P1
+//#define EMULATE_P1
 
 // Game modes definition
 typedef enum {
@@ -19,7 +19,9 @@ typedef enum {
     LAST_FRAME,
     SCORE_PHASE1,
     SCORE_PHASE2,
-    WIN
+    WIN,
+    CLEAR,
+    CLEAR2
 } game_mode;
 
 // Sound events definition
@@ -57,7 +59,7 @@ void scoreTimerCallback(void *arg);
 void frameTimerCallback(void *arg);
 void winTimerCallback(void *arg);
 
-Player *getPlayer(uint8_t nr);
+Player *getPlayer(uint8_t nr, uint8_t lastConnected);
 Player *getPlayerByConnection(struct espconn *connection);
 
 void callSound(uint8_t event);

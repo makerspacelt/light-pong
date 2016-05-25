@@ -15,9 +15,12 @@ uint8_t frameBuffer[LEDS*3];
 
 int led = 0;
 game_mode gameMode = START;
+game_mode lastGameMode = START;
 uint8_t isSafe = 0;
 uint8_t strobe = 0;
 uint8_t scoreRepeat = 0;
+uint8_t activeStrip = 0;
+uint8_t clearStep = 0;
 
 Player player1 = {1, 1, NULL, false, 0};
 Player player2 = {2, 1, NULL, false, 0};
@@ -33,13 +36,19 @@ Player *getPlayerByConnection(struct espconn *connection)
     }
 }
 
-Player *getPlayer(uint8_t nr)
+Player *getPlayer(uint8_t nr, uint8_t lastConnected)
 {
     if (nr == 0) {
         if (!player1.assigned) {
             return &player1;
-        } else {
+        } else if (!player2.assigned) {
             return &player2;
+        } else {
+            if (lastConnected == 1) {
+                return &player2;
+            } else {
+                return &player1;
+            }
         }
     } else if(nr == 1) {
         return &player1;
@@ -60,16 +69,52 @@ void ICACHE_FLASH_ATTR prepareGame()
         frameBuffer[i*3+2] = 0x00;
         if (dir == -1 && i >= LEDS - SAFEZONE) {
             led = LEDS - 1;
-            frameBuffer[i*3+2] = 0x30;
+            frameBuffer[i*3] = 0x50;
+            frameBuffer[i*3+1] = 0xFF;
         } else if (dir == 1 && i < SAFEZONE) {
             led = 0;
-            frameBuffer[i*3] = 0x30;
+             frameBuffer[i*3+2] = 0x80;
+            
         }
     }
     
     ws2812_push(frameBuffer, sizeof(frameBuffer));
     gameMode = START;
 }
+
+void ICACHE_FLASH_ATTR allStrips()
+{
+    gpio_output_set(BIT12, 0, BIT12, 0);
+    gpio_output_set(BIT13, 0, BIT13, 0);
+    gpio_output_set(BIT14, 0, BIT14, 0);
+}
+
+void ICACHE_FLASH_ATTR switchStrip()
+{
+    lastGameMode = gameMode;
+    gameMode = CLEAR;
+    
+    int i;
+    
+    for (i = 0; i < LEDS; i++ ) {
+        frameBuffer[i*3] = 0x00; 
+        frameBuffer[i*3+1] = 0x00;
+        frameBuffer[i*3+2] = 0x00;
+    }
+    
+    allStrips();
+    ws2812_push(frameBuffer, sizeof(frameBuffer));
+    
+    uint8_t temp = activeStrip;
+    
+    while (temp == activeStrip) {
+        activeStrip = ( os_random() % 3 ) + 1;
+    }
+    
+    os_printf("Random Strip: %d", activeStrip);
+}
+
+
 
 // System task which will monitor players input
 void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
@@ -81,6 +126,8 @@ void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
     if (gameMode == START) {
         if ((dir == 1 && !player1.button) || dir == -1 && !player2.button) {
             gameMode = MOVING;
+            switchStrip();
+            os_printf("Arming frame TIMER");
             os_timer_arm(&frameTimer, SPEED, 1);
         }
     }else if(gameMode == MOVING) {
@@ -89,6 +136,7 @@ void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
                 if (isSafe) {
                     led = LEDS - 1;
                     dir = -1;
+                    switchStrip();
                     callSound(SOUND_PONG);
                 } else {
                     os_timer_disarm(&frameTimer);
@@ -97,6 +145,8 @@ void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
                     player1.score++;
                     os_printf("SCORE %d VS %d\n", player1.score, player2.score);
                     callSound(SOUND_SCORE);
+                    
+                    allStrips();
                     os_timer_arm(&scoreTimer, 5, 1); 
                 }
             }
@@ -105,6 +155,7 @@ void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
                 if (isSafe) {
                     led = 0;
                     dir = 1;
+                    switchStrip();
                     callSound(SOUND_PONG);
                 } else {
                     os_timer_disarm(&frameTimer);
@@ -113,6 +164,8 @@ void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
                     player2.score++;
                     os_printf("SCORE %d VS %d\n", player1.score, player2.score);
                     callSound(SOUND_SCORE);
+                    
+                    allStrips();
                     os_timer_arm(&scoreTimer, 5, 1);
                 }
             }
@@ -142,11 +195,15 @@ void ICACHE_FLASH_ATTR scoreTimerCallback(void *arg)
         frameBuffer[i*3+1] = 0x00;
         frameBuffer[i*3+2] = 0x00;
         if (i < player1.score * SCORE_LEDS) {
-            frameBuffer[i*3] = strobe; // Player1 score
+            uint8 blue = strobe * 0x80 / 0xFF;
+            frameBuffer[i*3+2] = strobe; // Player1 score
         } else if (i < LEDS - MAX_SCORE * SCORE_LEDS && i >= MAX_SCORE * SCORE_LEDS) {
             frameBuffer[i*3+1] = strobe; // Center line
         } else if (i >= LEDS - player2.score * SCORE_LEDS) {
-            frameBuffer[i*3+2] = strobe; // Player2 score
+            frameBuffer[i*3+1] = strobe; // Player2 score
+           
+            uint8_t green = strobe * 0x50 / 0xFF; 
+            frameBuffer[i*3] = green;
         }
     }
     ws2812_push(frameBuffer, sizeof(frameBuffer));
@@ -185,13 +242,16 @@ void ICACHE_FLASH_ATTR winTimerCallback(void *arg)
     int i;   
     for (i = 0; i < LEDS; i++) {
         frameBuffer[i*3] = 0x00;
-        frameBuffer[i*3+1] = 255 - strobe;
+        frameBuffer[i*3+1] = 0x00;
         frameBuffer[i*3+2] = 0x00;
         
         if (player1.score == MAX_SCORE) {
-            frameBuffer[i*3] = strobe;
+            uint8_t blue = strobe * 0x80 / 0xFF;
+            frameBuffer[i*3+2] = blue;
         } else {
-            frameBuffer[i*3+2] = strobe;
+            uint8_t green = strobe * 0x50 / 0xFF;
+            frameBuffer[i*3] = green;
+            frameBuffer[i*3+1] = strobe;
         }
     }
     ws2812_push(frameBuffer, sizeof(frameBuffer));
@@ -212,10 +272,43 @@ void ICACHE_FLASH_ATTR winTimerCallback(void *arg)
 // A timer callback used to display each frame of moving light in-play
 void ICACHE_FLASH_ATTR frameTimerCallback(void *arg)
 {
+    if (gameMode == CLEAR) {
+        clearStep++;
+        if (clearStep > 5) {
+            gameMode = CLEAR2;
+            clearStep = 0;
+        }
+        
+        return;
+    }
+    
+    if (gameMode == CLEAR2) {
+        gameMode = lastGameMode;
+        
+        gpio_output_set(0, BIT12, BIT12, 0);
+        gpio_output_set(0, BIT13, BIT13, 0);
+        gpio_output_set(0, BIT14, BIT14, 0);
+        
+        switch (activeStrip) {
+            case 1:
+                gpio_output_set(BIT12, 0, BIT12, 0);
+                break;
+            case 2:
+                gpio_output_set(BIT13, 0, BIT13, 0);
+                break;
+            case 3:
+                gpio_output_set(BIT14, 0, BIT14, 0);
+                break;
+        }
+        
+        return;
+    }
+    
     if (gameMode == LAST_FRAME) {
         gameMode = SCORE_PHASE1;
         os_timer_disarm(&frameTimer);
         os_timer_arm(&scoreTimer, 5, 1);
+        allStrips();
         
         if (dir == 1) {
             led = 0;
@@ -245,9 +338,10 @@ void ICACHE_FLASH_ATTR frameTimerCallback(void *arg)
             frameBuffer[i*3+2] = 0;
             
             if (dir == -1 && led < SAFEZONE && i < SAFEZONE) {
-                frameBuffer[i*3] = 0x30;
+                frameBuffer[i*3+2] = 0x80;
             } else if (dir == 1 && led >= LEDS - SAFEZONE && i >= LEDS - SAFEZONE) {
-                frameBuffer[i*3+2] = 0x30;
+                frameBuffer[i*3+1] = 0xFF;
+                frameBuffer[i*3] = 0x50;
             }
         }
     }
