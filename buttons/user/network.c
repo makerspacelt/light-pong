@@ -108,8 +108,8 @@ void ICACHE_FLASH_ATTR initNetwork()
     
     struct ip_info ipinfo;
     IP4_ADDR(&ipinfo.ip, 192, 168, 4, 4);
-   IP4_ADDR(&ipinfo.gw, 192, 168, 4, 1);
-   IP4_ADDR(&ipinfo.netmask, 255, 255, 255, 0);
+    IP4_ADDR(&ipinfo.gw, 192, 168, 4, 1);
+    IP4_ADDR(&ipinfo.netmask, 255, 255, 255, 0);
 
     
     // Init WIFI client

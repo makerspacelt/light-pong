@@ -367,9 +367,9 @@ void ICACHE_FLASH_ATTR callSound(uint8_t event)
             break;
     }
 
-     sint8 status = espconn_send(soundManager, data, 1);
-     if (status == 0) {
-         soundSending = true;
-     }
-     os_printf("Sound manager: %d\n", status);
+    sint8 status = espconn_send(soundManager, data, 1);
+    if (status == 0) {
+        soundSending = true;
+    }
+    os_printf("Sound manager: %d\n", status);
 }
