@@ -7,7 +7,7 @@
 #include "queue.h"
 
 static os_timer_t ipTimer;
-uint8_t player = 0;
+uint8_t player = 2;
 struct espconn *conn;
 bool connected = 0;
 
@@ -42,7 +42,12 @@ static void ICACHE_FLASH_ATTR initConnection()
     wifi_get_ip_info(STATION_IF, &remoteIp);
     
     uint8_t serverIp[4];
-    intToIp(remoteIp.gw.addr, serverIp);
+    serverIp[0] = 192;
+    serverIp[1] = 168;
+    serverIp[2] = 4;
+    serverIp[3] = 2;
+    
+    //intToIp(remoteIp.gw.addr, serverIp);
     
     os_printf(
             "ServerIP: %d.%d.%d.%d\n",
@@ -101,9 +106,17 @@ void ICACHE_FLASH_ATTR initNetwork()
     os_memcpy(&stationConf.ssid, SSID, SSID_LEN);
     os_memcpy(&stationConf.password, PASS, PASS_LEN);
     
+    struct ip_info ipinfo;
+    IP4_ADDR(&ipinfo.ip, 192, 168, 4, 4);
+   IP4_ADDR(&ipinfo.gw, 192, 168, 4, 1);
+   IP4_ADDR(&ipinfo.netmask, 255, 255, 255, 0);
+
+    
     // Init WIFI client
     EnterCritical();
         wifi_set_opmode(STATION_MODE);
+        wifi_station_dhcpc_stop();
+        wifi_set_ip_info (0x00, &ipinfo);
         wifi_station_set_config(&stationConf);
     ExitCritical();
    
@@ -148,6 +161,7 @@ void ICACHE_FLASH_ATTR CBConnected(void *arg)
     espconn_send(conn, data, sizeof(data));
     
     connected = true;
+    system_os_post(0, 0, 0);
 }
 
 void ICACHE_FLASH_ATTR CBDisconnected(void *arg)

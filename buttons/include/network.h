@@ -1,8 +1,8 @@
 #ifndef NETWORK_H
 #define NETWORK_H
 
-#define SSID "LightPong"
-#define SSID_LEN 9
+#define SSID "LIGHT"
+#define SSID_LEN 5
 
 #define PASS "ABCDEF12"
 #define PASS_LEN 8

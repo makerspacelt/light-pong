@@ -9,38 +9,36 @@
 static struct espconn *contServer;
 struct espconn *soundManager;
 bool soundSending = false;
-uint8_t lastConnected = 0;
 
 void ICACHE_FLASH_ATTR initNetwork()
 {
-    struct softap_config sc;
-    wifi_softap_get_config(&sc);
-    
-    os_memset(&sc.ssid, 0, 32);
-    os_memset(&sc.password, 0, 64);
-    os_memcpy(&sc.ssid, "LightPong", 9);
-    os_memcpy(&sc.password, "ABCDEF12", 8);
-    
-    sc.ssid_len = 9;
-    sc.channel = 9;
-    sc.authmode = AUTH_WPA2_PSK;
-    sc.max_connection = 8;
-    
+    struct station_config stationConf; 
+    wifi_station_get_config(&stationConf);
+
+    // Don't check MAC of AP
+    stationConf.bssid_set = 0;
+
+    // Well that's was a headache
+    os_memset(&stationConf.ssid, 0, 32);
+    os_memset(&stationConf.password, 0, 64);
+
+    // Set SSID and pass, seems doesn't connect to open networks
+    os_memcpy(&stationConf.ssid, "LIGHT", 5);
+    os_memcpy(&stationConf.password, "ABCDEF12", 8);
+
+    struct ip_info ipinfo;
+    IP4_ADDR(&ipinfo.ip, 192, 168, 4, 2);
+    IP4_ADDR(&ipinfo.gw, 192, 168, 4, 1);
+    IP4_ADDR(&ipinfo.netmask, 255, 255, 255, 0);
+
+    // Init WIFI client
     EnterCritical();
-        wifi_set_opmode(SOFTAP_MODE);
-        wifi_softap_set_config(&sc);
+        wifi_set_opmode(STATION_MODE);
+        wifi_station_dhcpc_stop();
+        wifi_set_ip_info (0x00, &ipinfo);
+        wifi_station_set_config(&stationConf);
     ExitCritical();
-    
-    os_printf(
-            "SoftAP mode: \"%s\":\"%s\" @ %d int: %d %d/%d\n",
-            sc.ssid,
-            sc.password,
-            wifi_get_channel(),
-            sc.beacon_interval,
-            sc.ssid_len,
-            wifi_softap_dhcps_status()
-    );
-    
+
     os_timer_disarm(&soundTimer);
     os_timer_setfn(&soundTimer, (os_timer_func_t *)soundTimerCallback, NULL);
 
@@ -63,11 +61,11 @@ void ICACHE_FLASH_ATTR startTcpController()
     contServer->proto.tcp->local_port = 2048;
 
     espconn_regist_connectcb(contServer, controllerConnected);
-    
+
     // Start listening
     sint8 status = espconn_accept(contServer);
     sint8 conn_stat = espconn_tcp_set_max_con_allow(contServer, 5);
-    
+
     os_printf("Server created status: %d connections: %d\n", status, conn_stat);
 
     // Idle time
@@ -80,7 +78,7 @@ void ICACHE_FLASH_ATTR controllerConnected(void *arg)
     uint8_t *ip =  connection->proto.tcp->remote_ip;
 
     os_printf("Connected: %d.%d.%d.%d\n", ip[0], ip[1], ip[2], ip[3]);
-    
+
     espconn_regist_disconcb(connection, controllerDisconnected);
     espconn_regist_reconcb(connection, controllerReconnected);
     espconn_regist_recvcb(connection, controllerDataReceived);
@@ -107,38 +105,31 @@ void ICACHE_FLASH_ATTR controllerDataReceived(void *arg, char *pdata, unsigned s
     Player *player;
     
     os_printf("GOT DATA: 0x%02x 0x%02x\n", cmd, msg);
-    
+
     switch (cmd) {
         case CMD_PLAYER:           
-            player = getPlayer(msg, lastConnected);
+            player = getPlayer(msg);
 
             player->assigned = 1;
             player->button = 1;
             player->connection = connection;
-            
-            lastConnected = player->nr;
 
-            if (msg == 0) {
-                response[0] = CMD_PLAYER;
-                response[1] = player->nr;
-            }
-            
             break;
         case CMD_BUTTON:
             player = getPlayerByConnection(connection);
             player->button = msg;
-            
+
             os_printf("PLAYER BUTTON: %d, 0x%02x\n", player->nr, msg);
             break;
         case CMD_SOUND:
             os_printf("Sound manager connected\n");
             soundManager = connection;
             soundSending = false;
-            
+
             os_timer_arm(&soundTimer, 200, 1);
             break;       
     }
-    
+
     if (response[0]) {
         os_printf("RESPONDING: 0x%02x 0x%02x 0x%02x\n", response[0], response[1], response[2]);
         espconn_send(connection, response, 3);
@@ -148,10 +139,10 @@ void ICACHE_FLASH_ATTR controllerDataReceived(void *arg, char *pdata, unsigned s
 void ICACHE_FLASH_ATTR controllerDataSent(void *arg)
 {
     struct espconn *connection = (struct espconn *)arg;
-    
+
     if (connection == soundManager) {
         soundSending = false;
-        os_printf("S PING\n");
+        os_printf("Sound ping\n");
     }
 }
 
@@ -160,6 +151,7 @@ void ICACHE_FLASH_ATTR soundTimerCallback(void *arg)
     if (soundSending) {
         return;
     }
+    
     uint8_t data[1]= {0};
     sint8 status = espconn_send(soundManager, data, 1);
     if (status == 0) {
