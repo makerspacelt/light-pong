@@ -12,38 +12,29 @@ soundEngine() {
 
 		echo "Event: $dir"
 
-		if [ $dir == 6 ] || [ $dir == 4 ]; then
-			if [ ! -z $bgPid ]; then
-				kill "$bgPid"
-				unset bgPid
-			fi
-		fi
-
-
 		if [ $dir == 6 ]; then
-			volume="0.4"
-		else
-			volume="1"
+			continue
 		fi
-
 
 		if [ ! -z $soundFile ]; then			
-			play -q -v "$volume" "$dir/$soundFile" &
-			if [ $dir == 6 ]; then
-				bgPid=$!
-				echo "BG: $bgPid"
-			fi
+			play -q -v "1" "$dir/$soundFile" &
 		fi
 
 	done
 }
 
-if  nc -z -w 1 192.168.4.1 2048; then
-	play -q chimes.wav &
-	echo -n -e '\x03' | nc -w 1 -vv 192.168.4.1 2048 | soundEngine
-else
-	echo "No connection"
-	sleep 1
-fi
+play -q -v "0.4" 6/* repeat 9999 &
+
+while true; do
+	if  nc -n -z -w 1 192.168.4.2 2048; then
+		play -q chimes.wav &
+		echo -n -e '\x03' | nc -n -w 2 -vv 192.168.4.2 2048 | soundEngine
+	else
+		echo "No connection"
+		sleep 1
+
+	fi
+done
 
 sleep 1
+
