@@ -1,7 +1,6 @@
 /* 
- * 5x10 FONT FOR clock.
- * Most leters are missing
- * @author: Darius Vozbutas <darius@vozbutas.lt>
+ * 5x10 FONT FOR clock or score.
+ * Numbers only
  */
 
 #define FONT_5X10_BYTES_PER_CHAR 15

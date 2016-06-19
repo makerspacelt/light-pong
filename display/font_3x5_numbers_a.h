@@ -1,7 +1,6 @@
 /* 
- * 3x5 FONT FOR clock.
- * Most leters are missing
- * @author: Darius Vozbutas <darius@vozbutas.lt>
+ * 3x5 FONT
+ * hex numbers and some punctuation
  */
 
 #define FONT_3X5_BYTES_PER_CHAR 6
