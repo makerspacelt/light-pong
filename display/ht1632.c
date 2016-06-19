@@ -6,6 +6,7 @@
 #include "./font_3x5_numbers_a.h"
 #include "./font_5x10_numbers_a.h"
 #include "./font_6x12_numbers_a.h"
+#include "./font_10x16_numbers_a.h"
 
 
 static char ht1632_cs1_pin;
@@ -124,13 +125,14 @@ void ht1632_pixel_at(char x, char y, bool val) {
 }
 
 void ht1632_draw_image(const char * _img, char _width, char _height, char _x, char _y, int offset) {
-	char char_x, char_y, screen_x, screen_y, addr, val = 0;
+	char char_x, char_y, screen_x, screen_y, val = 0;
+	int addr = 0;
 	char row_bytes = (_width&0b111)?(_width>>3)+1:(_width>>3);
 
 	for (char_x=0; char_x<_width; char_x++) {
 		for (char_y=0; char_y<_height; char_y++) {
 			addr = offset + (char_x/8) + (char_y*row_bytes);
-			val = (_img[addr] >> (7-char_x)) & 1;
+			val = (_img[addr] >> (7-(char_x%8))) & 1;
 
 			screen_x = _x+char_x;
 			screen_y = _y+char_y;
@@ -141,25 +143,14 @@ void ht1632_draw_image(const char * _img, char _width, char _height, char _x, ch
 
 void ht1632_draw_score(char p1, char p2) {
 
-	char p1n1 = p1/10;
-	char p1n2 = p1%10;
-	char p2n1 = p2/10;
-	char p2n2 = p2%10;
+	char p1n1 = p2/10;
+	char p1n2 = p2%10;
 
-	char font_w = 6;
-	char font_h = 12;
-	char font_b = FONT_6X12_BYTES_PER_CHAR;
+	char font_w = 10;
+	char font_h = 16;
+	char font_b = FONT_10X16_BYTES_PER_CHAR;
 
-	if (p1n1 > 0) {
-		ht1632_draw_image(FONT_6X12, font_w, font_h, 0, 0, font_b*p1n1);
-		ht1632_draw_image(FONT_6X12, font_w, font_h, 7, 0, font_b*p1n2);
-	} else {
-		ht1632_draw_image(FONT_6X12, font_w, font_h, 0, 0, font_b*p1n2);
-	}
-
-	if (p2n1 > 0) {
-		ht1632_draw_image(FONT_6X12, font_w, font_h, 11, 4, font_b*p2n1);
-	}
-	ht1632_draw_image(FONT_6X12, font_w, font_h, 18, 4, font_b*p2n2);
+	ht1632_draw_image(FONT_10X16, font_w, font_h, 0, 0, font_b*p1n1);
+	ht1632_draw_image(FONT_10X16, font_w, font_h, 14, 0, font_b*p1n2);
 }
 

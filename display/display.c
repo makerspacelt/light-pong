@@ -31,7 +31,7 @@ void blinky_callback(void *arg)
 
 void score_callback(void *arg)
 {
-	if (score[1] == 10) {
+	if (score[1] == 100) {
 		score[0] = 0;
 		score[1] = 0;
 		ht1632_clear();
