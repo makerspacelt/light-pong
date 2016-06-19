@@ -125,12 +125,12 @@ void ht1632_pixel_at(char x, char y, bool val) {
 
 void ht1632_draw_image(const char * _img, char _width, char _height, char _x, char _y, int offset) {
 	char char_x, char_y, screen_x, screen_y, addr, val = 0;
-	char col_bytes = (_height&0b11)?(_height>>2)+1:(_height>>2);
+	char row_bytes = (_width&0b111)?(_width>>3)+1:(_width>>3);
 
 	for (char_x=0; char_x<_width; char_x++) {
 		for (char_y=0; char_y<_height; char_y++) {
-			addr = offset + (char_x*col_bytes) + (char_y/4);
-			val = (_img[addr] >> (char_y%4)) & 1;
+			addr = offset + (char_x/8) + (char_y*row_bytes);
+			val = (_img[addr] >> (7-char_x)) & 1;
 
 			screen_x = _x+char_x;
 			screen_y = _y+char_y;
@@ -146,16 +146,20 @@ void ht1632_draw_score(char p1, char p2) {
 	char p2n1 = p2/10;
 	char p2n2 = p2%10;
 
+	char font_w = 6;
+	char font_h = 12;
+	char font_b = FONT_6X12_BYTES_PER_CHAR;
+
 	if (p1n1 > 0) {
-		ht1632_draw_image(FONT_6X12, 6, 12, 0, 0, p1n1*FONT_6X12_BYTES_PER_CHAR);
-		ht1632_draw_image(FONT_6X12, 6, 12, 7, 0, p1n2*FONT_6X12_BYTES_PER_CHAR);
+		ht1632_draw_image(FONT_6X12, font_w, font_h, 0, 0, font_b*p1n1);
+		ht1632_draw_image(FONT_6X12, font_w, font_h, 7, 0, font_b*p1n2);
 	} else {
-		ht1632_draw_image(FONT_6X12, 6, 12, 0, 0, p1n2*FONT_6X12_BYTES_PER_CHAR);
+		ht1632_draw_image(FONT_6X12, font_w, font_h, 0, 0, font_b*p1n2);
 	}
 
 	if (p2n1 > 0) {
-		ht1632_draw_image(FONT_6X12, 6, 12, 11, 4, p2n1*FONT_6X12_BYTES_PER_CHAR);
+		ht1632_draw_image(FONT_6X12, font_w, font_h, 11, 4, font_b*p2n1);
 	}
-		ht1632_draw_image(FONT_6X12, 6, 12, 18, 4, p2n2*FONT_6X12_BYTES_PER_CHAR);
+	ht1632_draw_image(FONT_6X12, font_w, font_h, 18, 4, font_b*p2n2);
 }
 
