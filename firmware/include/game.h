@@ -59,9 +59,10 @@ void scoreTimerCallback(void *arg);
 void frameTimerCallback(void *arg);
 void winTimerCallback(void *arg);
 
-Player *getPlayer(uint8_t nr, uint8_t lastConnected);
+Player *getPlayer(uint8_t nr);
 Player *getPlayerByConnection(struct espconn *connection);
 
 void callSound(uint8_t event);
+void sendScore();
 
 #endif /* GAME_H */

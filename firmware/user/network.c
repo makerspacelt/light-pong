@@ -8,7 +8,97 @@
 
 static struct espconn *contServer;
 struct espconn *soundManager;
+struct espconn *master;
+
 bool soundSending = false;
+
+/**
+ * Convert 32 bit int to array of 4 8 bit ints
+ * 
+ * @param ip
+ * @param out
+ */
+static void ICACHE_FLASH_ATTR intToIp(uint32_t ip, uint8_t *out)
+{
+    *out++ = (uint8_t)ip;
+    *out++ = (uint8_t)(ip >> 8);
+    *out++ = (uint8_t)(ip >> 16);
+    *out++ = (uint8_t)(ip >> 24);
+}
+
+void ICACHE_FLASH_ATTR masterConnected(void *arg)
+{   
+    // Keep connection alive (basically reconnect on failure))
+    sint8 setop = espconn_set_opt(master, ESPCONN_KEEPALIVE);
+    
+    // Check every X seconds
+    uint32_t keeplive = 1;
+    sint8 status = espconn_set_keepalive(master, ESPCONN_KEEPIDLE, &keeplive);
+    
+    // Repeat check every X seconds
+    keeplive = 1;
+    sint8 status1 = espconn_set_keepalive(master, ESPCONN_KEEPINTVL, &keeplive);
+    
+    // Repeat check for X number of times, before calling reconcb
+    keeplive = 1;
+    sint8 status2 = espconn_set_keepalive(master, ESPCONN_KEEPCNT, &keeplive);
+    
+    os_printf("Master Connected, KeepAlive status: %d-%d-%d-%d\n", setop, status, status1, status2);
+}
+
+void ICACHE_FLASH_ATTR masterDisconnected(void *arg)
+{
+    os_printf("Master Disconnected\n");
+}
+
+void ICACHE_FLASH_ATTR masterReconnect(void *arg, sint8 err)
+{
+    os_printf("Master Reconnect: %d", err);
+}
+
+static void ICACHE_FLASH_ATTR openMaster()
+{
+    // Allocate connection
+    master = (struct espconn *)os_zalloc(sizeof(struct espconn));
+    os_memset(master, 0, sizeof (struct espconn));
+    espconn_create(master);
+
+    // Set type TCP
+    master->type = ESPCONN_TCP;
+    master->state = ESPCONN_NONE;
+
+    // Get remote ip (gateway)
+    struct ip_info remoteIp;
+    wifi_get_ip_info(STATION_IF, &remoteIp);
+
+    uint8_t serverIp[4];
+    intToIp(remoteIp.gw.addr, serverIp);
+
+    // Define server
+    master->proto.tcp = (esp_tcp *)os_zalloc(sizeof(esp_tcp));
+    os_memcpy(master->proto.tcp->remote_ip, serverIp, 4);
+    master->proto.tcp->remote_port = 2048;
+
+#ifndef NODEBUG
+    // Register connected callback
+    espconn_regist_connectcb(master, masterConnected);
+    espconn_regist_disconcb(master, masterDisconnected);
+    espconn_regist_reconcb(master, masterReconnect);
+#endif
+
+    // Connect to server
+    sint8 status = espconn_connect(master);
+    os_printf("Master do open connection: %d\n", status);
+}
+
+static void ICACHE_FLASH_ATTR wifiEventCallback(System_Event_t *evt)
+{
+    if (evt->event == EVENT_STAMODE_GOT_IP) {
+        os_printf("WiFi Connected, ip ready\n");
+        
+        openMaster();
+    }
+}
 
 void ICACHE_FLASH_ATTR initNetwork()
 {
@@ -42,6 +132,7 @@ void ICACHE_FLASH_ATTR initNetwork()
     os_timer_disarm(&soundTimer);
     os_timer_setfn(&soundTimer, (os_timer_func_t *)soundTimerCallback, NULL);
 
+    wifi_set_event_handler_cb(wifiEventCallback);
     startTcpController();
 }
 
@@ -78,7 +169,7 @@ void ICACHE_FLASH_ATTR controllerConnected(void *arg)
     uint8_t *ip =  connection->proto.tcp->remote_ip;
 
     os_printf("Connected: %d.%d.%d.%d\n", ip[0], ip[1], ip[2], ip[3]);
-
+ 
     espconn_regist_disconcb(connection, controllerDisconnected);
     espconn_regist_reconcb(connection, controllerReconnected);
     espconn_regist_recvcb(connection, controllerDataReceived);
@@ -142,7 +233,6 @@ void ICACHE_FLASH_ATTR controllerDataSent(void *arg)
 
     if (connection == soundManager) {
         soundSending = false;
-        os_printf("Sound ping\n");
     }
 }
 

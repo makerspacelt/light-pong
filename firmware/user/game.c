@@ -96,7 +96,7 @@ void ICACHE_FLASH_ATTR switchStrip()
     while (temp == activeStrip) {
         activeStrip = ( os_random() % 3 ) + 1;
     }
-    os_printf("Random Strip: %d", activeStrip);
+    os_printf("Random Strip: %d\n", activeStrip);
 }
 
 
@@ -112,7 +112,7 @@ void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
         if ((dir == 1 && !player1.button) || dir == -1 && !player2.button) {
             gameMode = MOVING;
             switchStrip();
-            os_printf("Arming frame TIMER");
+            os_printf("Arming frame TIMER\n");
             os_timer_arm(&frameTimer, SPEED, 1);
         }
     }else if(gameMode == MOVING) {
@@ -129,6 +129,7 @@ void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
                     gameMode = SCORE_PHASE1;
                     player1.score++;
                     os_printf("SCORE %d VS %d\n", player1.score, player2.score);
+                    sendScore();
                     callSound(SOUND_SCORE);
 
                     allStrips();
@@ -147,6 +148,7 @@ void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
 
                     gameMode = SCORE_PHASE1;
                     player2.score++;
+                    sendScore();
                     os_printf("SCORE %d VS %d\n", player1.score, player2.score);
                     callSound(SOUND_SCORE);
 
@@ -161,6 +163,7 @@ void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
             player1.button = player2.button = 1;
             player1.score = player2.score = 0;
 
+            sendScore();
             callSound(SOUND_MUSIC);
             strobe = 0;
             scoreRepeat = 0;
@@ -335,17 +338,32 @@ void ICACHE_FLASH_ATTR frameTimerCallback(void *arg)
         player1.score++;
         os_printf("SCORE %d VS %d\n", player1.score, player2.score);
         gameMode = LAST_FRAME;
+        sendScore();
         callSound(SOUND_SCORE);
 
     } else if (dir == -1 && led == 0) {
         player2.score++;
         os_printf("SCORE %d VS %d\n", player1.score, player2.score);
         gameMode = LAST_FRAME;
+        sendScore();
         callSound(SOUND_SCORE);
     }
 
     led += dir;
     ws2812_push(frameBuffer, sizeof(frameBuffer));
+}
+
+void sendScore()
+{
+    uint8_t data[4] = {
+        CMD_SCORE,
+        player1.score,
+        player2.score,
+        MAX_SCORE
+    };
+    sint8 status = espconn_send(master, data, 4);
+    
+    os_printf("Score sent - status %d\n", status);
 }
 
 void ICACHE_FLASH_ATTR callSound(uint8_t event)
@@ -371,5 +389,5 @@ void ICACHE_FLASH_ATTR callSound(uint8_t event)
     if (status == 0) {
         soundSending = true;
     }
-    os_printf("Sound manager: %d\n", status);
+    os_printf("Call sound event %d - status: %d\n", event, status);
 }
