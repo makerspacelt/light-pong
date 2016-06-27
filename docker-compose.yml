@@ -1,0 +1,10 @@
+dev:
+  image: dariuskt/esp8266-sdk
+  volumes:
+    - .:/home/user/src
+  devices:
+    - "/dev/ttyUSB0:/dev/ttyUSB0"
+  stdin_open: true
+  tty: true
+
+
