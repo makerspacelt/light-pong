@@ -36,14 +36,14 @@ void ht1632_send_bit(bool bit) {
 	asm("nop; nop; nop; nop;");
 }
 
-void ht1632_send_msb(int data, char len) {
+void ICACHE_FLASH_ATTR ht1632_send_msb(int data, char len) {
 	int j,t;
 	for(j=len-1, t = 1 << (len - 1); j>=0; --j, t >>= 1){
 		ht1632_send_bit((data&t));
 	}
 }
 
-void ht1632_send_cmd(char cmd) {
+void ICACHE_FLASH_ATTR ht1632_send_cmd(char cmd) {
 	ht1632_start_transaction();
 
 	ht1632_send_msb(0b100, 3);
@@ -53,7 +53,7 @@ void ht1632_send_cmd(char cmd) {
 	ht1632_end_transaction();
 }
 
-void ht1632_send_data(char addr, char data) {
+void ICACHE_FLASH_ATTR ht1632_send_data(char addr, char data) {
 	ht1632_start_transaction();
 
 	ht1632_send_msb(0b101 , 3);
@@ -67,7 +67,7 @@ int ht1632_addr_from_x_y(char x, char y) {
 	return ((x)*4+(y)/4);
 }
 
-void ht1632_init(char cs1_pin, char wr_pin, char data_pin) {
+void ICACHE_FLASH_ATTR ht1632_init(char cs1_pin, char wr_pin, char data_pin) {
 	ht1632_cs1_pin = cs1_pin;
 	ht1632_wr_pin = wr_pin;
 	ht1632_data_pin = data_pin;
@@ -81,7 +81,7 @@ void ht1632_init(char cs1_pin, char wr_pin, char data_pin) {
 
 
 
-void ht1632_clear() {
+void ICACHE_FLASH_ATTR ht1632_clear() {
 	char x,y = 0;
 	for (x=0; x<HT1632_WIDTH; x++) {
 		for (y=0; y<HT1632_HEIGHT; y+=4) {
@@ -90,7 +90,7 @@ void ht1632_clear() {
 	}
 }
 
-void ht1632_invert() {
+void ICACHE_FLASH_ATTR ht1632_invert() {
 	char x,y = 0;
 	for (x=0; x<HT1632_WIDTH; x++) {
 		for (y=0; y<HT1632_HEIGHT; y+=4) {
@@ -99,7 +99,7 @@ void ht1632_invert() {
 	}
 }
 
-void ht1632_render() {
+void ICACHE_FLASH_ATTR ht1632_render() {
 	char x,y = 0;
 	for (x=0; x<HT1632_WIDTH; x++) {
 		for (y=0; y<HT1632_HEIGHT; y+=4) {
@@ -110,13 +110,13 @@ void ht1632_render() {
 
 
 
-void ht1632_set_pixel_at(char x, char y) {
+void ICACHE_FLASH_ATTR ht1632_set_pixel_at(char x, char y) {
 	ht1632_fb[x][y/4] |= 1 << (3-(y%4));
 }
-void ht1632_clear_pixel_at(char x, char y) {
+void ICACHE_FLASH_ATTR ht1632_clear_pixel_at(char x, char y) {
 	ht1632_fb[x][y/4] &= ~(1 << (3-(y%4)));
 }
-void ht1632_pixel_at(char x, char y, bool val) {
+void ICACHE_FLASH_ATTR ht1632_pixel_at(char x, char y, bool val) {
 	if (val) {
 		ht1632_set_pixel_at(x,y);
 	} else {
@@ -124,7 +124,7 @@ void ht1632_pixel_at(char x, char y, bool val) {
 	}
 }
 
-void ht1632_draw_image(const char * _img, char _width, char _height, char _x, char _y, int offset) {
+void ICACHE_FLASH_ATTR ht1632_draw_image(const char * _img, char _width, char _height, char _x, char _y, int offset) {
 	char char_x, char_y, screen_x, screen_y, val = 0;
 	int addr = 0;
 	char row_bytes = (_width&0b111)?(_width>>3)+1:(_width>>3);
@@ -141,7 +141,7 @@ void ht1632_draw_image(const char * _img, char _width, char _height, char _x, ch
 	}
 }
 
-void ht1632_draw_score(char p1, char p2) {
+void ICACHE_FLASH_ATTR ht1632_draw_score(char p1, char p2) {
 
 	char p1n1 = p2/10;
 	char p1n2 = p2%10;
