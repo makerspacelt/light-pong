@@ -19,16 +19,16 @@ static char ht1632_fb[HT1632_WIDTH][HT1632_HEIGHT/4] = {0};
 
 
 
-void ht1632_start_transaction() {
+void ICACHE_FLASH_ATTR ht1632_start_transaction() {
 	io_pin_set(ht1632_cs1_pin, 0);
 }
-void ht1632_end_transaction() {
+void ICACHE_FLASH_ATTR ht1632_end_transaction() {
 	io_pin_set(ht1632_cs1_pin,  1);
 	io_pin_set(ht1632_wr_pin,   1);
 	io_pin_set(ht1632_data_pin, 1);
 }
 
-void ht1632_send_bit(bool bit) {
+void ICACHE_FLASH_ATTR ht1632_send_bit(bool bit) {
 	io_pin_set(ht1632_wr_pin, 0);
 	io_pin_set(ht1632_data_pin, (bit>0));
 	asm("nop; nop; nop; nop;");
@@ -63,7 +63,7 @@ void ICACHE_FLASH_ATTR ht1632_send_data(char addr, char data) {
 	ht1632_end_transaction();
 }
 
-int ht1632_addr_from_x_y(char x, char y) {
+int ICACHE_FLASH_ATTR ht1632_addr_from_x_y(char x, char y) {
 	return ((x)*4+(y)/4);
 }
 

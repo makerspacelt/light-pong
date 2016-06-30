@@ -6,13 +6,13 @@
 #include "./io.h"
 
 
-void io_pin_enable(char pin) {
+void ICACHE_FLASH_ATTR io_pin_enable(char pin) {
 	gpio_output_set(0, 0, (1 << pin), 0);
 }
-void io_pin_disable(char pin) {
+void ICACHE_FLASH_ATTR io_pin_disable(char pin) {
 	gpio_output_set(0, 0, 0, (1 << pin));
 }
-void io_pin_set(char pin, bool status)
+void ICACHE_FLASH_ATTR io_pin_set(char pin, bool status)
 {
 	if (status) {
 		gpio_output_set((1 << pin), 0, 0, 0);
@@ -20,7 +20,7 @@ void io_pin_set(char pin, bool status)
 		gpio_output_set(0, (1 << pin), 0, 0);
 	}
 }
-void io_pin_clear(char pin)
+void ICACHE_FLASH_ATTR io_pin_clear(char pin)
 {
 	gpio_output_set(0, (1 << pin), 0, 0);
 }

@@ -6,6 +6,7 @@
 #include "./io.h"
 #include "./ht1632.h"
 #include "./uart.h"
+#include "./network.h"
 
 
 static const char cs1_pin = 13;
@@ -20,20 +21,19 @@ static volatile os_timer_t score_timer;
 static volatile os_timer_t render_timer;
 
 
+void user_rf_pre_init(void){}
 
-void blinky_callback(void *arg)
+void ICACHE_FLASH_ATTR blinky_callback(void *arg)
 {
 	blinky = (blinky)?false:true;
 	if (blinky) {
 		ht1632_set_pixel_at(23, 0);
-		os_printf("-\n");
 	} else {
 		ht1632_clear_pixel_at(23, 0);
-		os_printf("+\n");
 	}
 }
 
-void score_callback(void *arg)
+void ICACHE_FLASH_ATTR score_callback(void *arg)
 {
 	if (score[1] == 100) {
 		score[0] = 0;
@@ -63,6 +63,8 @@ void ICACHE_FLASH_ATTR user_init()
 	uart_init(BIT_RATE_921600, BIT_RATE_921600);
 	os_printf("Welcome to Light-Pong Display!\n");
   
+	initNetwork();
+
 	// setup ht1632 display
 	PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTCK_U, FUNC_GPIO13);
 	gpio_output_set(0, 0, (1 << cs1_pin), 0);

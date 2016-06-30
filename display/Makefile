@@ -1,12 +1,12 @@
 CC = xtensa-lx106-elf-gcc
-CFLAGS = -I. -mlongcalls
+CFLAGS = -I. -mlongcalls -Os -DICACHE_FLASH
 LDLIBS = -nostdlib -Wl,--start-group -lmain -lnet80211 -lwpa -llwip -lpp -lphy -Wl,--end-group -lgcc
 LDFLAGS = -Teagle.app.v6.ld
 
 
 build: 0x00000.bin 0x40000.bin
 
-display: display.o ht1632.o uart.o io.o
+display: display.o ht1632.o uart.o network.o io.o
 
 
 display.o: display.c
@@ -14,6 +14,8 @@ display.o: display.c
 ht1632.o: ht1632.c
 
 uart.o: uart.c
+
+network.o: network.c
 
 io.o: io.c
 
