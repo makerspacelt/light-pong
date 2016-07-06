@@ -16,11 +16,13 @@ uint8_t frameBuffer[LEDS*3];
 int led = 0;
 game_mode gameMode = START;
 game_mode lastGameMode = START;
+
 uint8_t isSafe = 0;
 uint8_t strobe = 0;
 uint8_t scoreRepeat = 0;
 uint8_t activeStrip = 0;
 uint8_t clearStep = 0;
+uint8_t speed = SPEED_START;
 
 Player player1 = {1, 1, NULL, false, 0};
 Player player2 = {2, 1, NULL, false, 0};
@@ -55,14 +57,22 @@ void ICACHE_FLASH_ATTR prepareGame()
         frameBuffer[i*3] = 0x00; 
         frameBuffer[i*3+1] = 0x00;
         frameBuffer[i*3+2] = 0x00;
-        if (dir == -1 && i >= LEDS - SAFEZONE) {
-            led = LEDS - 1;
-            frameBuffer[i*3] = 0x50;
-            frameBuffer[i*3+1] = 0xFF;
-        } else if (dir == 1 && i < SAFEZONE) {
-            led = 0;
-             frameBuffer[i*3+2] = 0x80;
-            
+        if (dir == -1) {
+            if (i >= LEDS - SAFEZONE) {
+                led = LEDS - 1;
+                frameBuffer[i*3] = 0x50;
+                frameBuffer[i*3+1] = 0xFF;
+            } else if (i == SAFEZONE - 1) {
+                frameBuffer[i*3+2] = 0x80;
+            }
+        } else {
+            if (i < SAFEZONE) {
+                led = 0;
+                frameBuffer[i*3+2] = 0x80;
+            } else if (i == LEDS - SAFEZONE) {
+                frameBuffer[i*3] = 0x50;
+                frameBuffer[i*3+1] = 0xFF;
+            }
         }
     }
 
@@ -77,8 +87,12 @@ void ICACHE_FLASH_ATTR allStrips()
     gpio_output_set(BIT14, 0, BIT14, 0);
 }
 
-void ICACHE_FLASH_ATTR switchStrip()
+void clearStrips()
 {
+    if (gameMode == CLEAR || gameMode == CLEAR2) {
+        return;
+    }
+    
     lastGameMode = gameMode;
     gameMode = CLEAR;
 
@@ -87,19 +101,41 @@ void ICACHE_FLASH_ATTR switchStrip()
         frameBuffer[i*3] = 0x00; 
         frameBuffer[i*3+1] = 0x00;
         frameBuffer[i*3+2] = 0x00;
+        if (i == SAFEZONE - 1) {
+            frameBuffer[i*3+2] = 0x80;
+        } else if (i == (LEDS - SAFEZONE)) {
+            frameBuffer[i*3] = 0x50;
+            frameBuffer[i*3+1] = 0xFF;
+        }
     }
 
     allStrips();
     ws2812_push(frameBuffer, sizeof(frameBuffer));
+}
 
+void ICACHE_FLASH_ATTR switchStrip()
+{
+    clearStrips();
+    
     uint8_t temp = activeStrip;
     while (temp == activeStrip) {
         activeStrip = ( os_random() % 3 ) + 1;
     }
+    
     os_printf("Random Strip: %d\n", activeStrip);
 }
 
-
+void ICACHE_FLASH_ATTR incSpeed()
+{
+    os_timer_disarm(&frameTimer);
+    
+    if (speed > SPEED_MAX) {
+        speed -= SPEED_INC;
+    }
+    
+    clearStrips(); 
+    os_timer_arm(&frameTimer, speed, 1);
+}
 
 // System task which will monitor players input
 void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
@@ -110,19 +146,22 @@ void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
 
     if (gameMode == START) {
         if ((dir == 1 && !player1.button) || dir == -1 && !player2.button) {
+            player1.button = player2.button = 1;
             gameMode = MOVING;
             switchStrip();
             os_printf("Arming frame TIMER\n");
-            os_timer_arm(&frameTimer, SPEED, 1);
+            os_timer_arm(&frameTimer, speed, 1);
         }
     }else if(gameMode == MOVING) {
         if (dir == 1) {
             if (!player2.button) {
+                player2.button = 1;
                 if (isSafe) {
                     led = LEDS - 1;
                     dir = -1;
                     switchStrip();
                     callSound(SOUND_PONG);
+                    incSpeed();
                 } else {
                     os_timer_disarm(&frameTimer);
 
@@ -138,11 +177,13 @@ void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
             }
         } else {
             if (!player1.button) {
+                player1.button = 1;
                 if (isSafe) {
                     led = 0;
                     dir = 1;
                     switchStrip();
                     callSound(SOUND_PONG);
+                    incSpeed();
                 } else {
                     os_timer_disarm(&frameTimer);
 
@@ -218,6 +259,7 @@ void ICACHE_FLASH_ATTR scoreTimerCallback(void *arg)
 
         if (player1.score == MAX_SCORE || player2.score == MAX_SCORE) {
             gameMode = WIN;
+            speed = SPEED_START;
             os_timer_arm(&winTimer, 40, 1);
         } else {
             prepareGame();
@@ -226,7 +268,7 @@ void ICACHE_FLASH_ATTR scoreTimerCallback(void *arg)
 }
 
 void ICACHE_FLASH_ATTR winTimerCallback(void *arg)
-{
+{   
     int i;   
     for (i = 0; i < LEDS; i++) {
         frameBuffer[i*3] = 0x00;
@@ -325,9 +367,9 @@ void ICACHE_FLASH_ATTR frameTimerCallback(void *arg)
             frameBuffer[i*3+1] = 0;
             frameBuffer[i*3+2] = 0;
 
-            if (dir == -1 && led < SAFEZONE && i < SAFEZONE) {
+            if ((dir == -1 && led < SAFEZONE && i < SAFEZONE) || i == SAFEZONE - 1) {
                 frameBuffer[i*3+2] = 0x80;
-            } else if (dir == 1 && led >= LEDS - SAFEZONE && i >= LEDS - SAFEZONE) {
+            } else if ((dir == 1 && led >= LEDS - SAFEZONE && i >= LEDS - SAFEZONE) || i == LEDS - SAFEZONE) {
                 frameBuffer[i*3+1] = 0xFF;
                 frameBuffer[i*3] = 0x50;
             }

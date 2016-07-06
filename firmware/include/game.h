@@ -3,7 +3,9 @@
 
 #define LEDS 300     // total ammount of leds
 #define SAFEZONE 30
-#define SPEED 4    // single frame speed in ms
+#define SPEED_MAX 4    // single minimum frame speed in ms
+#define SPEED_START 14
+#define SPEED_INC 2
 #define TRAIL 2
 
 #define MAX_SCORE 10 // score limit
@@ -54,6 +56,7 @@ extern Player player2;
 
 void prepareGame();
 void inputMonitor(os_event_t *events);
+void incSpeed();
 
 void scoreTimerCallback(void *arg);
 void frameTimerCallback(void *arg);

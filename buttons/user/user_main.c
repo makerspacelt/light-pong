@@ -7,7 +7,7 @@
 #include "ws2812_i2s.h"
 
 #define LEDS 28
-#define VOLTAGE 3900
+#define VOLTAGE 3600
 
 os_event_t procTaskQueue[1];
 
@@ -20,7 +20,7 @@ uint8_t lastSent = 1;
 
 uint8_t frameBuffer[LEDS*3];
 uint8_t led = 0;
-uint16_t vdd = 4200;
+uint32_t vdd = 4200;
 
 void user_rf_pre_init(void){}
 
@@ -65,7 +65,8 @@ void ICACHE_FLASH_ATTR debounceCallback(void *arg)
 void ledCallback(void *arg)
 {
     int i;
-    vdd = system_get_vdd33();
+    vdd = system_get_vdd33() * 1000 / 1024;
+    
     
     for (i = 0; i < LEDS; i++ ) {
         frameBuffer[i*3] = 0x00;

@@ -7,7 +7,7 @@
 #include "queue.h"
 
 static os_timer_t ipTimer;
-uint8_t player = 2;
+uint8_t player = 1;
 struct espconn *conn;
 bool connected = 0;
 
@@ -107,7 +107,7 @@ void ICACHE_FLASH_ATTR initNetwork()
     os_memcpy(&stationConf.password, PASS, PASS_LEN);
     
     struct ip_info ipinfo;
-    IP4_ADDR(&ipinfo.ip, 192, 168, 4, 4);
+    IP4_ADDR(&ipinfo.ip, 192, 168, 4, 3);
     IP4_ADDR(&ipinfo.gw, 192, 168, 4, 1);
     IP4_ADDR(&ipinfo.netmask, 255, 255, 255, 0);
 
