@@ -1,0 +1,5 @@
+nbproject
+*.bin
+*.o
+*.elf
+
