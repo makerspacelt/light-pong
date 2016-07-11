@@ -18,7 +18,7 @@ configure_wifi() {
 
 install_dependencies() {
 	opkg update
-	opkg install socat
+	opkg install ncat
 }
 
 
@@ -27,6 +27,6 @@ configure_ip() {
 }
 
 start_broadcaster() {
-	socat # something
+	ncat --broker -knl 2048
 }
 
