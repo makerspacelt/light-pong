@@ -19,7 +19,6 @@ sint8 sendButtonData(uint8_t state);
 void CBConnected(void *arg);
 void CBDisconnected(void *arg);
 void CBReconnect(void *arg, sint8 err);
-void CBDataReceived(void *arg, char *pdata, unsigned short len);
 
 
 #endif /* NETWORK_H */

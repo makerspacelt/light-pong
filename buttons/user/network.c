@@ -7,7 +7,8 @@
 #include "queue.h"
 
 static os_timer_t ipTimer;
-uint8_t player = 1;
+uint8_t player = 2 - (BUTTON & 1);
+    
 struct espconn *conn;
 bool connected = 0;
 
@@ -37,25 +38,11 @@ static void ICACHE_FLASH_ATTR initConnection()
     connection->type = ESPCONN_TCP;
     connection->state = ESPCONN_NONE;
 
-    // Get remote ip (gateway)
     struct ip_info remoteIp;
     wifi_get_ip_info(STATION_IF, &remoteIp);
-    
+
     uint8_t serverIp[4];
-    serverIp[0] = 192;
-    serverIp[1] = 168;
-    serverIp[2] = 4;
-    serverIp[3] = 2;
-    
-    //intToIp(remoteIp.gw.addr, serverIp);
-    
-    os_printf(
-            "ServerIP: %d.%d.%d.%d\n",
-            serverIp[0],
-            serverIp[1],
-            serverIp[2],
-            serverIp[3]
-    );
+    intToIp(remoteIp.gw.addr, serverIp);
     
     // Define server
     connection->proto.tcp = (esp_tcp *)os_zalloc(sizeof(esp_tcp));
@@ -107,8 +94,8 @@ void ICACHE_FLASH_ATTR initNetwork()
     os_memcpy(&stationConf.password, PASS, PASS_LEN);
     
     struct ip_info ipinfo;
-    IP4_ADDR(&ipinfo.ip, 192, 168, 4, 3);
-    IP4_ADDR(&ipinfo.gw, 192, 168, 4, 1);
+    IP4_ADDR(&ipinfo.ip, 192, 168, 4, 10 + BUTTON);
+    IP4_ADDR(&ipinfo.gw, 192, 168, 4, 2);
     IP4_ADDR(&ipinfo.netmask, 255, 255, 255, 0);
 
     
@@ -128,8 +115,8 @@ void ICACHE_FLASH_ATTR initNetwork()
 
 sint8 ICACHE_FLASH_ATTR sendButtonData(uint8_t state)
 {
-    uint8_t data[2] = {CMD_BUTTON, state};
-    return espconn_send(conn, data, 2);
+    uint8_t data[5] = {CMD_BUTTON, player, BUTTON, state, '\n'};
+    return espconn_send(conn, data, 5);
 }
 
 void ICACHE_FLASH_ATTR CBConnected(void *arg)
@@ -137,7 +124,6 @@ void ICACHE_FLASH_ATTR CBConnected(void *arg)
     conn = (struct espconn *)arg;
     
     espconn_regist_disconcb(conn, CBDisconnected);
-    espconn_regist_recvcb(conn, CBDataReceived);
     
     // Keep connection alive (basically reconnect on failure))
     sint8 setop = espconn_set_opt(conn, ESPCONN_KEEPALIVE);
@@ -176,15 +162,4 @@ void ICACHE_FLASH_ATTR CBReconnect(void *arg, sint8 err)
     connected = false;
     
     os_timer_arm(&ipTimer, 100, 0); 
-}
-
-void ICACHE_FLASH_ATTR CBDataReceived(void *arg, char *pdata, unsigned short len)
-{
-    switch(*pdata++) {
-        case CMD_PLAYER:
-            player = *pdata++;
-            os_printf("Player assigned: %d\n", player);
-            system_os_post(0, 0, 0);
-            break;
-    }
 }

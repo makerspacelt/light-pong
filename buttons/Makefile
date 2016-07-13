@@ -1,5 +1,7 @@
+BUTTON = 7
+
 CC = xtensa-lx106-elf-gcc
-CFLAGS = -I. -mlongcalls -Iinclude -Iuser -Idriver -Os -DICACHE_FLASH
+CFLAGS = -I. -mlongcalls -Iinclude -Iuser -Idriver -Os -DICACHE_FLASH -DBUTTON=$(BUTTON)
 LDLIBS = -nostdlib -Wl,--start-group -lmain -lnet80211 -lwpa -llwip -lpp -lphy -Wl,--end-group -lgcc
 LDFLAGS = -Teagle.app.v6.ld
 

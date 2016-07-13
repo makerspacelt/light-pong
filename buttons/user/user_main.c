@@ -6,7 +6,7 @@
 #include "gpio.h"
 #include "ws2812_i2s.h"
 
-#define LEDS 28
+#define LEDS 14
 #define VOLTAGE 3600
 
 os_event_t procTaskQueue[1];
@@ -14,7 +14,7 @@ os_event_t procTaskQueue[1];
 volatile os_timer_t debounceTimer;
 volatile os_timer_t ledTimer;
 
-uint8_t button = 1;
+uint8_t state = 1;
 uint8_t debounceValue = 1;
 uint8_t lastSent = 1;
 
@@ -27,9 +27,9 @@ void user_rf_pre_init(void){}
 // System task which will monitor players input
 void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
 {   
-    if (lastSent != button) {
-        if (sendButtonData(button) == 0) {
-            lastSent = button;
+    if (lastSent != state) {
+        if (sendButtonData(state) == 0) {
+            lastSent = state;
         }
         
         system_os_post(0, 0, 0);
@@ -38,7 +38,7 @@ void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
     
     uint8_t current = GPIO_INPUT_GET(0);
     
-    if (current != button) {
+    if (current != state) {
         debounceValue = current;
         
         os_timer_arm(&debounceTimer, 10, 0);       
@@ -52,10 +52,10 @@ void ICACHE_FLASH_ATTR debounceCallback(void *arg)
 {
     uint8_t current = GPIO_INPUT_GET(0);
     if (debounceValue == current) {
-        button = current;
+        state = current;
         
-        if (sendButtonData(button) == 0) {
-            lastSent = button;
+        if (sendButtonData(state) == 0) {
+            lastSent = state;
         }
     }
     
@@ -84,7 +84,7 @@ void ledCallback(void *arg)
                 frameBuffer[i*3+2] = 0x20;
             }
         } else {
-            if (!button) {
+            if (!state) {
                 if (player == 1) {
                     frameBuffer[i*3+2] = 0x30;
                 } else {

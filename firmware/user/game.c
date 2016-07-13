@@ -397,39 +397,40 @@ void ICACHE_FLASH_ATTR frameTimerCallback(void *arg)
 
 void sendScore()
 {
-    uint8_t data[4] = {
+    uint8_t data[5] = {
         CMD_SCORE,
         player1.score,
         player2.score,
-        MAX_SCORE
+        MAX_SCORE,
+        '\n'
     };
-    sint8 status = espconn_send(master, data, 4);
+    sint8 status = espconn_send(master, data, 5);
     
     os_printf("Score sent - status %d\n", status);
 }
 
 void ICACHE_FLASH_ATTR callSound(uint8_t event)
 {
-    uint8_t data[1];
+    uint8_t data[3];
+    data[0] = CMD_SOUND;
 
     switch (event) {
         case SOUND_SCORE:
             if (player1.score + player2.score == 1) {
-                data[0] = SOUND_SCORE_FIRST;
+                data[1] = SOUND_SCORE_FIRST;
             } else if(player1.score == MAX_SCORE || player2.score == MAX_SCORE) {
-                data[0] = SOUND_VICTORY;
+                data[1] = SOUND_VICTORY;
             } else {
-                data[0] = SOUND_SCORE;
+                data[1] = SOUND_SCORE;
             }
             break;
         default:
-            data[0] = event;
+            data[1] = event;
             break;
     }
+    
+    data[2] = '\n';
 
-    sint8 status = espconn_send(soundManager, data, 1);
-    if (status == 0) {
-        soundSending = true;
-    }
+    sint8 status = espconn_send(master, data, 3);
     os_printf("Call sound event %d - status: %d\n", event, status);
 }
