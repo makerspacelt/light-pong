@@ -143,14 +143,11 @@ void ICACHE_FLASH_ATTR ht1632_draw_image(const char * _img, char _width, char _h
 
 void ICACHE_FLASH_ATTR ht1632_draw_score(char p1, char p2) {
 
-	char p1n1 = p2/10;
-	char p1n2 = p2%10;
-
 	char font_w = 10;
 	char font_h = 16;
 	char font_b = FONT_10X16_BYTES_PER_CHAR;
 
-	ht1632_draw_image(FONT_10X16, font_w, font_h, 0, 0, font_b*p1n1);
-	ht1632_draw_image(FONT_10X16, font_w, font_h, 14, 0, font_b*p1n2);
+	ht1632_draw_image(FONT_10X16, font_w, font_h, 0, 0, font_b*p1);
+	ht1632_draw_image(FONT_10X16, font_w, font_h, 14, 0, font_b*p2);
 }
 

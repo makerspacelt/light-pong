@@ -22,5 +22,6 @@ void CBDataReceived(void *arg, char *pdata, unsigned short len);
 
 void EnterCritical();
 void ExitCritical();
+void ScoreReceived(int p1, int p2, int max);
 
 #endif /* NETWORK_H */

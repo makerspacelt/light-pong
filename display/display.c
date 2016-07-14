@@ -17,7 +17,6 @@ static bool blinky = true;
 static char score[] = {0, 0};
 
 static volatile os_timer_t blinky_dot_timer;
-static volatile os_timer_t score_timer;
 static volatile os_timer_t render_timer;
 
 
@@ -33,21 +32,12 @@ void ICACHE_FLASH_ATTR blinky_callback(void *arg)
 	}
 }
 
-void ICACHE_FLASH_ATTR score_callback(void *arg)
+
+void ICACHE_FLASH_ATTR ScoreReceived(int p1, int p2, int max)
 {
-	if (score[1] == 100) {
-		score[0] = 0;
-		score[1] = 0;
-		ht1632_clear();
-	} else {
-		if (score[0] < score[1]) {
-			score[0]++;
-		} else {
-			score[1]++;
-		}
-		ht1632_draw_score(score[0], score[1]);
-	}
+	ht1632_draw_score(p1, p2);
 }
+
 
 
 void ICACHE_FLASH_ATTR render_callback(void *arg)
@@ -84,12 +74,9 @@ void ICACHE_FLASH_ATTR user_init()
 	os_timer_arm(&render_timer, 50, 1);
 
 	ht1632_clear();
-
+	ht1632_draw_score(10, 12);
 
 	os_timer_setfn(&blinky_dot_timer, (os_timer_func_t *)blinky_callback, NULL);
 	os_timer_arm(&blinky_dot_timer, 500, 1);
-
-	os_timer_setfn(&score_timer, (os_timer_func_t *)score_callback, NULL);
-	os_timer_arm(&score_timer, 500, 1);
 
 }

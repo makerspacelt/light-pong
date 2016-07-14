@@ -10,7 +10,6 @@ static os_timer_t ipTimer;
 struct espconn *conn;
 bool connected = 0;
 
-
 /**
  * Convert 32 bit int to array of 4 8 bit ints
  * 
@@ -173,8 +172,7 @@ void ICACHE_FLASH_ATTR CBDataReceived(void *arg, char *pdata, unsigned short len
 	int _score = 0;
     switch(*pdata++) {
         case CMD_SCORE:
-            _score = *pdata++;
-            os_printf("Score updated: %d\n", _score);
+            ScoreReceived(*pdata++, *pdata++, *pdata++);
             system_os_post(0, 0, 0);
             break;
     }
