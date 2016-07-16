@@ -10,8 +10,13 @@
 #define CMD_PLAYER 0x01
 #define CMD_BUTTON 0x02
 
+#ifndef BUTTON
+    #define BUTTON 1
+#endif
+
 extern bool connected;
 extern uint8_t player;
+extern uint8_t button;
 
 void initNetwork();
 sint8 sendButtonData(uint8_t state);

@@ -40,12 +40,7 @@ static void ICACHE_FLASH_ATTR initConnection()
     wifi_get_ip_info(STATION_IF, &remoteIp);
     
     uint8_t serverIp[4];
-    serverIp[0] = 192;
-    serverIp[1] = 168;
-    serverIp[2] = 4;
-    serverIp[3] = 2;
-    
-    //intToIp(remoteIp.gw.addr, serverIp);
+    intToIp(remoteIp.gw.addr, serverIp);
     
     os_printf(
             "ServerIP: %d.%d.%d.%d\n",
@@ -105,8 +100,8 @@ void ICACHE_FLASH_ATTR initNetwork()
     os_memcpy(&stationConf.password, PASS, PASS_LEN);
     
     struct ip_info ipinfo;
-    IP4_ADDR(&ipinfo.ip, 192, 168, 4, 4);
-    IP4_ADDR(&ipinfo.gw, 192, 168, 4, 1);
+    IP4_ADDR(&ipinfo.ip, 192, 168, 4, 20 + DISPLAY);
+    IP4_ADDR(&ipinfo.gw, 192, 168, 4, 2);
     IP4_ADDR(&ipinfo.netmask, 255, 255, 255, 0);
 
     
@@ -169,6 +164,13 @@ void ICACHE_FLASH_ATTR CBReconnect(void *arg, sint8 err)
 
 void ICACHE_FLASH_ATTR CBDataReceived(void *arg, char *pdata, unsigned short len)
 {
+//    os_printf("DATA (%d): ", len);
+//    uint8_t i;
+//    for (i = 0; i < len; i++) {
+//        os_printf("0x%02x ", pdata[i]);
+//    }
+//    os_printf("\n");
+    
 	int _score = 0;
     switch(*pdata++) {
         case CMD_SCORE:

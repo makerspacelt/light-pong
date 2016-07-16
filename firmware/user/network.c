@@ -114,7 +114,7 @@ void ICACHE_FLASH_ATTR initNetwork()
     os_memcpy(&stationConf.password, "ABCDEF12", 8);
 
     struct ip_info ipinfo;
-    IP4_ADDR(&ipinfo.ip, 192, 168, 4, 250);
+    IP4_ADDR(&ipinfo.ip, 192, 168, 4, 3);
     IP4_ADDR(&ipinfo.gw, 192, 168, 4, 2);
     IP4_ADDR(&ipinfo.netmask, 255, 255, 255, 0);
 
@@ -150,11 +150,10 @@ void ICACHE_FLASH_ATTR controllerDataReceived(void *arg, char *pdata, unsigned s
             *pdata++;
             
             // skip button number for now
-            *pdata++;
-
-            player->button = *pdata++;
+            uint8_t nr = *pdata++;
+            player->buttons[nr] = *pdata++;
             
-            os_printf("PLAYER BUTTON: %d, 0x%02x\n", player->nr, player->button);
+            os_printf("PLAYER BUTTON: %d-%d, 0x%02x\n", player->nr,  nr, player->buttons[nr]);
             break;     
     }
 }

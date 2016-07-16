@@ -7,11 +7,12 @@
 #include "queue.h"
 
 static os_timer_t ipTimer;
+
+uint8_t button = BUTTON / 2 + BUTTON % 2;
 uint8_t player = 2 - (BUTTON & 1);
     
 struct espconn *conn;
 bool connected = 0;
-
 
 /**
  * Convert 32 bit int to array of 4 8 bit ints
@@ -115,7 +116,7 @@ void ICACHE_FLASH_ATTR initNetwork()
 
 sint8 ICACHE_FLASH_ATTR sendButtonData(uint8_t state)
 {
-    uint8_t data[5] = {CMD_BUTTON, player, BUTTON, state, '\n'};
+    uint8_t data[5] = {CMD_BUTTON, player, button, state, '\n'};
     return espconn_send(conn, data, 5);
 }
 

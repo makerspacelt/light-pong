@@ -23,7 +23,7 @@ static volatile os_timer_t render_timer;
 void user_rf_pre_init(void){}
 
 void ICACHE_FLASH_ATTR blinky_callback(void *arg)
-{
+{              
 	blinky = (blinky)?false:true;
 	if (blinky) {
 		ht1632_set_pixel_at(23, 0);

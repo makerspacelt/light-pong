@@ -27,7 +27,7 @@ void user_init(void)
         #endif
         
         os_printf("Welcome to Light-Pong\n");
-        
+
         // GPIO00 as input Player#1
         // GPIO02 as input Player#2
         PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0);

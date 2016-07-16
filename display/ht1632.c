@@ -76,7 +76,7 @@ void ICACHE_FLASH_ATTR ht1632_init(char cs1_pin, char wr_pin, char data_pin) {
 	ht1632_send_cmd(HT1632_CMD_COMS01);
 	ht1632_send_cmd(HT1632_CMD_SYSEN);
 	ht1632_send_cmd(HT1632_CMD_LEDON);
-	ht1632_send_cmd(HT1632_CMD_PWM(1));
+	ht1632_send_cmd(HT1632_CMD_PWM(16));
 }
 
 

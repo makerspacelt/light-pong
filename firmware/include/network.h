@@ -3,8 +3,7 @@
 
 #define CMD_PLAYER 0x01
 #define CMD_BUTTON 0x02
-#define CMD_SOUND  0x03
-#define CMD_SCORE  0x04
+#define CMD_EVENT  0x04
 
 extern struct espconn *master;
 

@@ -1,4 +1,4 @@
-BUTTON = 7
+BUTTON = 3
 
 CC = xtensa-lx106-elf-gcc
 CFLAGS = -I. -mlongcalls -Iinclude -Iuser -Idriver -Os -DICACHE_FLASH -DBUTTON=$(BUTTON)
@@ -22,7 +22,7 @@ button.elf : $(SRCS)
 	esptool -eo button.elf -es .irom0.text $@ -ec
 
 flash: 0x00000.bin 0x40000.bin
-	sudo /home/user/bin/esptool.py --baud 921600 write_flash 0 0x00000.bin 0x40000 0x40000.bin
+	sudo /home/user/bin/esptool.py --baud 921600 write_flash 0 0x00000.bin 0x40000 0x40000.bin 0x7C000 ../data_init.bin
 
 connect:
 	sudo minicom --noinit -b 115200 -D /dev/ttyUSB0

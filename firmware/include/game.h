@@ -40,9 +40,7 @@ typedef enum {
 // Player definition
 typedef struct {
     uint8_t nr;
-    uint8_t button;
-    struct espconn *connection;
-    BOOL assigned;
+    uint8_t buttons[10];
     uint8_t score;
 } Player;
 
@@ -65,7 +63,6 @@ void winTimerCallback(void *arg);
 Player *getPlayer(uint8_t nr);
 Player *getPlayerByConnection(struct espconn *connection);
 
-void callSound(uint8_t event);
-void sendScore();
+void sendEvent(uint8_t event, uint8_t playerScored);
 
 #endif /* GAME_H */

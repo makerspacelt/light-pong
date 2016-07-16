@@ -19,24 +19,18 @@ game_mode lastGameMode = START;
 
 uint8_t isSafe = 0;
 uint8_t strobe = 0;
+uint8_t wasSafe = 0;
+uint8_t nextCaller = 0;
+
 uint8_t scoreRepeat = 0;
 uint8_t activeStrip = 0;
 uint8_t clearStep = 0;
 uint8_t speed = SPEED_START;
 
-Player player1 = {1, 1, NULL, false, 0};
-Player player2 = {2, 1, NULL, false, 0};
+Player player1 = {1, {1, 1, 1, 1, 1, 1, 1, 1, 1, 1}, 0};
+Player player2 = {2, {1, 1, 1, 1, 1, 1, 1, 1, 1, 1}, 0};
 
 signed char dir = 1;
-
-Player *getPlayerByConnection(struct espconn *connection)
-{
-    if (player1.connection == connection) {
-        return &player1;
-    } else {
-        return &player2;
-    }
-}
 
 Player *getPlayer(uint8_t nr)
 {
@@ -44,6 +38,45 @@ Player *getPlayer(uint8_t nr)
         return &player1;
     } else {
         return &player2;
+    }
+}
+
+uint8_t ICACHE_FLASH_ATTR isAnyPressed(Player *player) {
+    uint8_t i;
+    for (i = 0; i < 10; i++) {
+        if (player->buttons[i] == 0) {
+            return i;
+        }
+    }
+    
+    return 0;
+}
+
+bool ICACHE_FLASH_ATTR isActivePressed(Player *player) {
+    if (player->buttons[activeStrip] == 0) {
+        return true;
+    }
+    
+    return false;
+}
+
+uint8_t ICACHE_FLASH_ATTR isStartCondition()
+{
+    uint8_t i;
+    for (i = 0; i < 10; i++) {
+        if (player1.buttons[i] == 0 && player2.buttons[i] == 0) {
+            return true;
+        }
+    }
+    
+    return 0;
+}
+
+void ICACHE_FLASH_ATTR clearButtons()
+{
+    uint8_t i;
+    for (i = 0; i < 10; i++) {
+        player1.buttons[i] = player2.buttons[i] = 1;
     }
 }
 
@@ -116,13 +149,10 @@ void clearStrips()
 void ICACHE_FLASH_ATTR switchStrip()
 {
     clearStrips();
+    activeStrip = nextCaller;
+    nextCaller = 0;
     
-    uint8_t temp = activeStrip;
-    while (temp == activeStrip) {
-        activeStrip = ( os_random() % 3 ) + 1;
-    }
-    
-    os_printf("Random Strip: %d\n", activeStrip);
+    os_printf("Strip selected: %d\n", activeStrip);
 }
 
 void ICACHE_FLASH_ATTR incSpeed()
@@ -137,6 +167,26 @@ void ICACHE_FLASH_ATTR incSpeed()
     os_timer_arm(&frameTimer, speed, 1);
 }
 
+void ICACHE_FLASH_ATTR pong(Player *player)
+{
+    if (player->nr == 1) {
+        led = 0;
+        dir = 1;
+    } else {
+        led = LEDS - 1;
+        dir = -1;          
+    } 
+    
+    if (nextCaller == 0) {
+        nextCaller = activeStrip;
+    }
+    
+    switchStrip();
+    sendEvent(SOUND_PONG, 0);
+    incSpeed();
+    wasSafe = 0;
+}
+
 // System task which will monitor players input
 void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
 {
@@ -145,67 +195,99 @@ void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
     #endif
 
     if (gameMode == START) {
-        if ((dir == 1 && !player1.button) || dir == -1 && !player2.button) {
-            player1.button = player2.button = 1;
+        if ((dir == 1 && isAnyPressed(&player1)) || dir == -1 && isAnyPressed(&player2)) {
+            Player *player;
+            if (dir == 1) {
+                player = &player1;
+            } else {
+                player = &player2;
+            }
             gameMode = MOVING;
+            nextCaller = isAnyPressed(player);
+            
             switchStrip();
-            os_printf("Arming frame TIMER\n");
+            clearButtons();
+            
             os_timer_arm(&frameTimer, speed, 1);
         }
     }else if(gameMode == MOVING) {
         if (dir == 1) {
-            if (!player2.button) {
-                player2.button = 1;
+            uint8_t tempNext = isAnyPressed(&player2);
+           
+            if (tempNext) {
                 if (isSafe) {
-                    led = LEDS - 1;
-                    dir = -1;
-                    switchStrip();
-                    callSound(SOUND_PONG);
-                    incSpeed();
+                    bool activePressed = isActivePressed(&player2);
+                    clearButtons();
+                    
+                    if (activePressed){
+                        if (nextCaller == 0) {
+                            wasSafe = 1;
+                        } else {
+                            pong(&player2);
+                        }
+                    } else if (nextCaller == 0) {
+                        nextCaller = tempNext;
+                        if (wasSafe == 1) {
+                            pong(&player2);
+                        }
+                    }
                 } else {
                     os_timer_disarm(&frameTimer);
 
                     gameMode = SCORE_PHASE1;
                     player1.score++;
                     os_printf("SCORE %d VS %d\n", player1.score, player2.score);
-                    sendScore();
-                    callSound(SOUND_SCORE);
+                    sendEvent(SOUND_SCORE, 1);
 
                     allStrips();
                     os_timer_arm(&scoreTimer, 5, 1); 
                 }
+                clearButtons();
             }
         } else {
-            if (!player1.button) {
-                player1.button = 1;
+            uint8_t tempNext = isAnyPressed(&player1);
+           
+            if (tempNext) {
                 if (isSafe) {
-                    led = 0;
-                    dir = 1;
-                    switchStrip();
-                    callSound(SOUND_PONG);
-                    incSpeed();
+                    bool activePressed = isActivePressed(&player1);
+                    clearButtons();
+                    
+                    if (activePressed){
+                        if (nextCaller == 0) {
+                            wasSafe = 1;
+                        } else {
+                            pong(&player1);
+                        }
+                    } else if (nextCaller == 0) {
+                        nextCaller = tempNext;
+                        if (wasSafe == 1) {
+                            pong(&player1);
+                        }
+                    }                    
                 } else {
                     os_timer_disarm(&frameTimer);
 
                     gameMode = SCORE_PHASE1;
                     player2.score++;
-                    sendScore();
+
                     os_printf("SCORE %d VS %d\n", player1.score, player2.score);
-                    callSound(SOUND_SCORE);
+                    sendEvent(SOUND_SCORE, 2);
 
                     allStrips();
                     os_timer_arm(&scoreTimer, 5, 1);
                 }
+                clearButtons();
             }
         }
     }else if (gameMode == WIN) {
-        if (player1.button == 0 && player2.button == 0) {
+        if (isStartCondition()) {
             os_timer_disarm(&winTimer);
-            player1.button = player2.button = 1;
+            
+            clearButtons();
             player1.score = player2.score = 0;
 
-            sendScore();
-            callSound(SOUND_MUSIC);
+            sendEvent(SOUND_MUSIC, 0);
+            
             strobe = 0;
             scoreRepeat = 0;
             prepareGame();           
@@ -368,69 +450,79 @@ void ICACHE_FLASH_ATTR frameTimerCallback(void *arg)
             frameBuffer[i*3+2] = 0;
 
             if ((dir == -1 && led < SAFEZONE && i < SAFEZONE) || i == SAFEZONE - 1) {
-                frameBuffer[i*3+2] = 0x80;
+                if (wasSafe) {
+                    frameBuffer[i*3] = 0xFF;
+                } else {
+                    frameBuffer[i*3+2] = 0x80;
+                }
             } else if ((dir == 1 && led >= LEDS - SAFEZONE && i >= LEDS - SAFEZONE) || i == LEDS - SAFEZONE) {
-                frameBuffer[i*3+1] = 0xFF;
-                frameBuffer[i*3] = 0x50;
+                if (wasSafe) {
+                    frameBuffer[i*3] = 0xFF;
+                } else {
+                    frameBuffer[i*3+1] = 0xFF;
+                    frameBuffer[i*3] = 0x50;
+                }
             }
         }
     }
 
     if (dir == 1 && led == LEDS - 1) {
-        player1.score++;
-        os_printf("SCORE %d VS %d\n", player1.score, player2.score);
-        gameMode = LAST_FRAME;
-        sendScore();
-        callSound(SOUND_SCORE);
+        if (wasSafe) {
+            wasSafe = 0;
+
+            pong(&player2);
+        } else {
+            player1.score++;
+            os_printf("SCORE %d VS %d\n", player1.score, player2.score);
+            gameMode = LAST_FRAME;
+            sendEvent(SOUND_SCORE, 1);
+        }
 
     } else if (dir == -1 && led == 0) {
-        player2.score++;
-        os_printf("SCORE %d VS %d\n", player1.score, player2.score);
-        gameMode = LAST_FRAME;
-        sendScore();
-        callSound(SOUND_SCORE);
+        if (wasSafe) {
+            wasSafe = 0;
+
+            pong(&player1);
+        } else {
+            player2.score++;
+            os_printf("SCORE %d VS %d\n", player1.score, player2.score);
+            gameMode = LAST_FRAME;
+            sendEvent(SOUND_SCORE, 2);
+        }
     }
 
     led += dir;
     ws2812_push(frameBuffer, sizeof(frameBuffer));
 }
 
-void sendScore()
+void ICACHE_FLASH_ATTR sendEvent(uint8_t event, uint8_t playerScored)
 {
-    uint8_t data[5] = {
-        CMD_SCORE,
+    uint8_t data[7] = {
+        CMD_EVENT,
         player1.score,
         player2.score,
         MAX_SCORE,
-        '\n'
+        playerScored,
+        0,
+        '\n',
     };
-    sint8 status = espconn_send(master, data, 5);
     
-    os_printf("Score sent - status %d\n", status);
-}
-
-void ICACHE_FLASH_ATTR callSound(uint8_t event)
-{
-    uint8_t data[3];
-    data[0] = CMD_SOUND;
-
     switch (event) {
         case SOUND_SCORE:
             if (player1.score + player2.score == 1) {
-                data[1] = SOUND_SCORE_FIRST;
+                data[5] = SOUND_SCORE_FIRST;
             } else if(player1.score == MAX_SCORE || player2.score == MAX_SCORE) {
-                data[1] = SOUND_VICTORY;
+                data[5] = SOUND_VICTORY;
             } else {
-                data[1] = SOUND_SCORE;
+                data[5] = SOUND_SCORE;
             }
             break;
         default:
-            data[1] = event;
+            data[5] = event;
             break;
     }
     
-    data[2] = '\n';
-
-    sint8 status = espconn_send(master, data, 3);
-    os_printf("Call sound event %d - status: %d\n", event, status);
+    sint8 status = espconn_send(master, data, 7);
+    
+    os_printf("Call event %d - status: %d\n", event, status);
 }

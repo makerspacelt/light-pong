@@ -9,7 +9,11 @@
 
 #define CMD_PLAYER 0x01
 #define CMD_BUTTON 0x02
-#define CMD_SCORE 0x03
+#define CMD_SCORE 0x04
+
+#ifndef DISPLAY
+    #define DISPLAY 1
+#endif
 
 extern bool connected;
 
