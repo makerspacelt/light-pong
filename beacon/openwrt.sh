@@ -18,7 +18,7 @@ configure_wifi() {
 }
 
 install_dependencies() {
-	echo -e '\n### Checking dependencies =========================================\n' \
+	echo -e '\n### Checking dependencies =========================================\n'
 	if [ ! -f /usr/bin/ncat ]
 	then
 		opkg update
@@ -28,13 +28,13 @@ install_dependencies() {
 
 
 configure_ip() {
-	echo -e '\n### Configuring IP =========================================\n' \
+	echo -e '\n### Configuring IP =========================================\n'
 	ifconfig br-lan:0 192.168.4.2 up
 }
 
 configure_startup()
 {
-	echo -e '\n### Setting up startup script =========================================\n' \
+	echo -e '\n### Setting up startup script =========================================\n'
 	local f=/etc/init.d/light-pong
 	echo '#!/bin/sh /etc/rc.common' > $f
 	echo 'START=99' >>$f
@@ -46,7 +46,7 @@ configure_startup()
 }
 
 start_broadcaster() {
-	echo -e '\n### Starting broker =========================================\n' \
+	echo -e '\n### Starting broker =========================================\n'
 	ncat --broker -knl 2048
 }
 
