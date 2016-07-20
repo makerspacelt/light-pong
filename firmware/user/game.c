@@ -21,6 +21,7 @@ uint8_t isSafe = 0;
 uint8_t strobe = 0;
 uint8_t wasSafe = 0;
 uint8_t nextCaller = 0;
+uint8_t pongEventSent = 0;
 
 uint8_t scoreRepeat = 0;
 uint8_t activeStrip = 0;
@@ -167,6 +168,12 @@ void ICACHE_FLASH_ATTR incSpeed()
     os_timer_arm(&frameTimer, speed, 1);
 }
 
+void ICACHE_FLASH_ATTR pongEvent()
+{
+    sendEvent(SOUND_PONG, 0);
+    pongEventSent = 1;
+}
+
 void ICACHE_FLASH_ATTR pong(Player *player)
 {
     if (player->nr == 1) {
@@ -182,10 +189,16 @@ void ICACHE_FLASH_ATTR pong(Player *player)
     }
     
     switchStrip();
-    sendEvent(SOUND_PONG, 0);
+    if (!pongEventSent) {
+        sendEvent(SOUND_PONG, 0);
+    }
+    
+    pongEventSent = 0;
     incSpeed();
     wasSafe = 0;
 }
+
+
 
 // System task which will monitor players input
 void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
@@ -222,6 +235,7 @@ void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
                     if (activePressed){
                         if (nextCaller == 0) {
                             wasSafe = 1;
+                            pongEvent();
                         } else {
                             pong(&player2);
                         }
@@ -255,6 +269,7 @@ void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
                     if (activePressed){
                         if (nextCaller == 0) {
                             wasSafe = 1;
+                            pongEvent();
                         } else {
                             pong(&player1);
                         }
@@ -499,26 +514,26 @@ void ICACHE_FLASH_ATTR sendEvent(uint8_t event, uint8_t playerScored)
 {
     uint8_t data[7] = {
         CMD_EVENT,
+        0,
         player1.score,
         player2.score,
         MAX_SCORE,
         playerScored,
-        0,
-        '\n',
+        124,
     };
     
     switch (event) {
         case SOUND_SCORE:
             if (player1.score + player2.score == 1) {
-                data[5] = SOUND_SCORE_FIRST;
+                data[1] = SOUND_SCORE_FIRST;
             } else if(player1.score == MAX_SCORE || player2.score == MAX_SCORE) {
-                data[5] = SOUND_VICTORY;
+                data[1] = SOUND_VICTORY;
             } else {
-                data[5] = SOUND_SCORE;
+                data[1] = SOUND_SCORE;
             }
             break;
         default:
-            data[5] = event;
+            data[1] = event;
             break;
     }
     

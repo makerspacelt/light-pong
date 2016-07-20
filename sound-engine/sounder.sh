@@ -5,9 +5,15 @@ set -a
 cd "$(dirname $0)"
 
 soundEngine() {
-	while IFS= read -r -n1 char
+	while IFS= read -r -d'|' char
 	do
-		dir=$(printf "%d" "'$char")
+		echo $char | xxd
+		if [[ "$(printf "%d" "'${char:0:1}")" != "4" ]]; then
+			continue
+		fi
+
+		dir=$(printf "%d" "'${char:1:1}")
+		echo "DIR: $dir"		
 		soundFile=$(ls "$dir" | sort -R | tail -1)
 
 		echo "Event: $dir"
@@ -28,7 +34,7 @@ play -q -v "0.4" 6/* repeat 9999 &
 while true; do
 	if  nc -n -z -w 1 192.168.4.2 2048; then
 		play -q chimes.wav &
-		echo -n -e '\x03' | nc -n -w 2 -vv 192.168.4.2 2048 | soundEngine
+		echo -n -e '\x03' | nc -n -vv 192.168.4.2 2048 | soundEngine
 	else
 		echo "No connection"
 		sleep 1

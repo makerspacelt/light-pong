@@ -174,6 +174,9 @@ void ICACHE_FLASH_ATTR CBDataReceived(void *arg, char *pdata, unsigned short len
 	int _score = 0;
     switch(*pdata++) {
         case CMD_SCORE:
+            //skip a byte
+            *pdata++;
+            
             ScoreReceived(*pdata++, *pdata++, *pdata++);
             system_os_post(0, 0, 0);
             break;

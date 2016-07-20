@@ -116,7 +116,7 @@ void ICACHE_FLASH_ATTR initNetwork()
 
 sint8 ICACHE_FLASH_ATTR sendButtonData(uint8_t state)
 {
-    uint8_t data[5] = {CMD_BUTTON, player, button, state, '\n'};
+    uint8_t data[5] = {CMD_BUTTON, player, button, state, 124};
     return espconn_send(conn, data, 5);
 }
 
@@ -142,10 +142,6 @@ void ICACHE_FLASH_ATTR CBConnected(void *arg)
     sint8 status2 = espconn_set_keepalive(conn, ESPCONN_KEEPCNT, &keeplive);
     
     os_printf("Connected, KeepAlive status: %d-%d-%d-%d\n", setop, status, status1, status2);
-    
-    // Register or get player number
-    uint8_t data[] = {CMD_PLAYER, player};
-    espconn_send(conn, data, sizeof(data));
     
     connected = true;
     system_os_post(0, 0, 0);
