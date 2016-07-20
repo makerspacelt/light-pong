@@ -74,7 +74,7 @@ void ICACHE_FLASH_ATTR user_init()
 	os_timer_arm(&render_timer, 50, 1);
 
 	ht1632_clear();
-	ht1632_draw_score(10, 12);
+	ht1632_draw_score(11, 13);
 
 	os_timer_setfn(&blinky_dot_timer, (os_timer_func_t *)blinky_callback, NULL);
 	os_timer_arm(&blinky_dot_timer, 500, 1);
