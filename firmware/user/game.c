@@ -111,6 +111,7 @@ void ICACHE_FLASH_ATTR prepareGame()
     }
 
     ws2812_push(frameBuffer, sizeof(frameBuffer));
+    speed = SPEED_START;
     gameMode = START;
 }
 
