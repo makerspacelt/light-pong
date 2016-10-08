@@ -14,6 +14,8 @@
 uint8_t frameBuffer[LEDS*3];
 
 int led = 0;
+int pauseCycle = 0;
+
 game_mode gameMode = START;
 game_mode lastGameMode = START;
 
@@ -112,8 +114,8 @@ void ICACHE_FLASH_ATTR prepareGame(game_mode mode)
 
     ws2812_push(frameBuffer, sizeof(frameBuffer));
     speed = SPEED_START;
-    if (mode != START) {
-        os_timer_arm(&pauseTimer, 3000, 0);
+    if (mode != PAUSE) {
+        os_timer_arm(&pauseTimer, 10, 1);
     }
     gameMode = mode;
 }
@@ -516,7 +518,25 @@ void ICACHE_FLASH_ATTR frameTimerCallback(void *arg)
 
 void ICACHE_FLASH_ATTR pauseTimerCallback(void *arg)
 {
-    gameMode = START;
+    int i = 0;
+    
+    for (i = 0; i < LEDS; i++ ) {
+        frameBuffer[i*3] = 0x00; 
+        frameBuffer[i*3+1] = 0x00;
+        frameBuffer[i*3+2] = 0x00;
+        if (pauseCycle % 2 == 0) {
+            frameBuffer[i*3+1] = 0xFF;
+         
+        }
+    }
+    ws2812_push(frameBuffer, sizeof(frameBuffer));
+    pauseCycle++;
+    
+    if (pauseCycle >= PAUSE_COUNT) {
+        pauseCycle == 0;
+        os_timer_disarm (&pauseTimer);
+        prepareGame(START);
+    }
 }
 
 void ICACHE_FLASH_ATTR sendEvent(uint8_t event, uint8_t playerScored)

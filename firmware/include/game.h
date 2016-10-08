@@ -11,6 +11,8 @@
 #define MAX_SCORE 10 // score limit
 #define SCORE_LEDS 14 // how much leds to light per 1 point
 
+#define PAUSE_COUNT 300
+
 // Player1 uses GPIO0 from this esp instead of separate esp
 //#define EMULATE_P1
 
