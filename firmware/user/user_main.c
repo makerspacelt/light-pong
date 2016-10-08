@@ -71,6 +71,9 @@ void user_init(void)
         // Prepare winner animation timer
         os_timer_disarm(&winTimer);
         os_timer_setfn(&winTimer, (os_timer_func_t *)winTimerCallback, NULL);
+        
+        os_timer_disarm(&pauseTimer);
+        os_timer_setfn(&pauseTimer, (os_timer_func_t *)pauseTimerCallback, NULL);
 
         #ifdef EMULATE_P1
                 player1.assigned = 1;

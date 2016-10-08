@@ -82,7 +82,7 @@ void ICACHE_FLASH_ATTR clearButtons()
 }
 
 // Prepare player start zone and game variables
-void ICACHE_FLASH_ATTR prepareGame()
+void ICACHE_FLASH_ATTR prepareGame(game_mode mode)
 {
     isSafe = 0;
 
@@ -112,7 +112,10 @@ void ICACHE_FLASH_ATTR prepareGame()
 
     ws2812_push(frameBuffer, sizeof(frameBuffer));
     speed = SPEED_START;
-    gameMode = START;
+    if (mode != START) {
+        os_timer_arm(&pauseTimer, 3000, 0);
+    }
+    gameMode = mode;
 }
 
 void ICACHE_FLASH_ATTR allStrips()
@@ -302,11 +305,11 @@ void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
             clearButtons();
             player1.score = player2.score = 0;
 
-            sendEvent(SOUND_MUSIC, 0);
+            sendEvent(SOUND_START, 0);
             
             strobe = 0;
             scoreRepeat = 0;
-            prepareGame();           
+            prepareGame(PAUSE);      
         }
     }
 
@@ -360,7 +363,7 @@ void ICACHE_FLASH_ATTR scoreTimerCallback(void *arg)
             speed = SPEED_START;
             os_timer_arm(&winTimer, 40, 1);
         } else {
-            prepareGame();
+            prepareGame(START);
         }
     }
 }
@@ -509,6 +512,11 @@ void ICACHE_FLASH_ATTR frameTimerCallback(void *arg)
 
     led += dir;
     ws2812_push(frameBuffer, sizeof(frameBuffer));
+}
+
+void ICACHE_FLASH_ATTR pauseTimerCallback(void *arg)
+{
+    gameMode = START;
 }
 
 void ICACHE_FLASH_ATTR sendEvent(uint8_t event, uint8_t playerScored)
