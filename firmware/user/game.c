@@ -115,7 +115,7 @@ void ICACHE_FLASH_ATTR prepareGame(game_mode mode)
     ws2812_push(frameBuffer, sizeof(frameBuffer));
     speed = SPEED_START;
     if (mode == PAUSE) {
-        os_timer_arm(&pauseTimer, 100, 1);
+        os_timer_arm(&pauseTimer, 12, 1);
     }
     gameMode = mode;
 }
@@ -522,12 +522,8 @@ void ICACHE_FLASH_ATTR pauseTimerCallback(void *arg)
     
     for (i = 0; i < LEDS; i++ ) {
         frameBuffer[i*3] = 0x00; 
-        frameBuffer[i*3+1] = 0x00;
+        frameBuffer[i*3+1] = 255 - pauseCycle;
         frameBuffer[i*3+2] = 0x00;
-        if (pauseCycle % 2 == 0) {
-            frameBuffer[i*3+1] = 0xFF;
-         
-        }
     }
     ws2812_push(frameBuffer, sizeof(frameBuffer));
     pauseCycle++;
