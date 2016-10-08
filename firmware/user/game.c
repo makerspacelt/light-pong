@@ -115,7 +115,7 @@ void ICACHE_FLASH_ATTR prepareGame(game_mode mode)
     ws2812_push(frameBuffer, sizeof(frameBuffer));
     speed = SPEED_START;
     if (mode == PAUSE) {
-        os_timer_arm(&pauseTimer, 10, 1);
+        os_timer_arm(&pauseTimer, 50, 1);
     }
     gameMode = mode;
 }
