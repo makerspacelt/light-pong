@@ -66,6 +66,8 @@ void pauseTimerCallback(void *arg);
 
 Player *getPlayer(uint8_t nr);
 Player *getPlayerByConnection(struct espconn *connection);
+uint8_t getGultyStrip(uint8_t button);
+void selectStrip(uint8_t strip);
 
 void sendEvent(uint8_t event, uint8_t playerScored);
 
