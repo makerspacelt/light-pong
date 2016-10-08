@@ -26,9 +26,8 @@ uint8_t nextCaller = 0;
 uint8_t pongEventSent = 0;
 
 uint8_t guilty = 0;
-uint8_t guiltyDir = 0;
 
-uint8_t scoreRepeat = 0;
+int scoreRepeat = 0;
 uint8_t activeStrip = 0;
 uint8_t clearStep = 0;
 uint8_t speed = SPEED_START;
@@ -37,6 +36,7 @@ Player player1 = {1, {1, 1, 1, 1, 1, 1, 1, 1, 1, 1}, 0};
 Player player2 = {2, {1, 1, 1, 1, 1, 1, 1, 1, 1, 1}, 0};
 
 signed char dir = 1;
+signed char guiltyDir = 0;
 
 Player *getPlayer(uint8_t nr)
 {
@@ -301,7 +301,7 @@ void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
                     guiltyDir = dir;
                     
                     clearStrips();
-                    os_timer_arm(&scoreTimer, 10, 1); 
+                    os_timer_arm(&scoreTimer, 2, 1); 
                 }
                 clearButtons();
             }
@@ -339,7 +339,7 @@ void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
                     guiltyDir = dir;
                     clearStrips();
                     
-                    os_timer_arm(&scoreTimer, 10, 1);
+                    os_timer_arm(&scoreTimer, 2, 1);
                 }
                 clearButtons();
             }
@@ -367,6 +367,8 @@ void ICACHE_FLASH_ATTR scoreTimerCallback(void *arg)
 {
     if (gameMode == CLEAR) {
         gameMode = CLEAR2;
+        
+        os_printf("CLEAR 1 Done\n");
 
         return;
     }
@@ -381,6 +383,7 @@ void ICACHE_FLASH_ATTR scoreTimerCallback(void *arg)
         }
         
         scoreRepeat = 0;
+        os_printf("CLEAR DONE SHOULD ANIMATE, MODE: %d, DIR: %d\n", gameMode, guiltyDir);
     }
     
     int i;
@@ -389,12 +392,13 @@ void ICACHE_FLASH_ATTR scoreTimerCallback(void *arg)
         frameBuffer[i*3+1] = 0x00;
         frameBuffer[i*3+2] = 0x00;
         
-        if ((guilty == 1 && i <= led) || (guilty == -1 && i > led)) {
+        if ((guiltyDir == 1 && i <= led) || (guiltyDir == -1 && i > led)) {
             frameBuffer[i*3+1] = 0xFF;
         }
     }
     ws2812_push(frameBuffer, sizeof(frameBuffer));
     scoreRepeat++;
+    led += guiltyDir;
     
     if (scoreRepeat >= LEDS) {
         os_timer_disarm(&scoreTimer);
@@ -468,14 +472,18 @@ void ICACHE_FLASH_ATTR frameTimerCallback(void *arg)
     if (gameMode == LAST_FRAME) {
         gameMode = SCORE_PHASE1;
         os_timer_disarm(&frameTimer);
-        os_timer_arm(&scoreTimer, 5, 1);
-        allStrips();
-
+        
         if (dir == 1) {
             led = 0;
         } else {
             led = LEDS - 1;
         }
+        
+        guilty = getGultyStrip(activeStrip);
+        guiltyDir = dir;
+                    
+        clearStrips();
+        os_timer_arm(&scoreTimer, 2, 1);
 
         return;
     }
