@@ -24,6 +24,7 @@ uint8_t strobe = 0;
 uint8_t wasSafe = 0;
 uint8_t nextCaller = 0;
 uint8_t pongEventSent = 0;
+int pongCounter = 0;
 
 uint8_t guilty = 0;
 
@@ -118,6 +119,7 @@ void ICACHE_FLASH_ATTR prepareGame(game_mode mode)
     ws2812_push(frameBuffer, sizeof(frameBuffer));
     allStrips();
     speed = SPEED_START;
+    pongCounter = 0;
     if (mode == PAUSE) {
         os_timer_arm(&pauseTimer, 12, 1);
     }
@@ -193,6 +195,10 @@ void ICACHE_FLASH_ATTR incSpeed()
         speed -= SPEED_INC;
     }
     
+    if (pongCounter >= UBER_MODE) {
+        speed = SPEED_UBER;
+    }
+    
     clearStrips(); 
     os_timer_arm(&frameTimer, speed, 1);
 }
@@ -223,6 +229,7 @@ void ICACHE_FLASH_ATTR pong(Player *player)
     }
     
     pongEventSent = 0;
+    pongCounter++;
     incSpeed();
     wasSafe = 0;
 }
@@ -394,6 +401,7 @@ void ICACHE_FLASH_ATTR scoreTimerCallback(void *arg)
         if (player1.score == MAX_SCORE || player2.score == MAX_SCORE) {
             gameMode = WIN;
             speed = SPEED_START;
+            pongCounter = 0;
             os_timer_arm(&winTimer, 40, 1);
         } else {
             prepareGame(START);
