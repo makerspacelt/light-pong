@@ -24,6 +24,7 @@ uint8_t strobe = 0;
 uint8_t wasSafe = 0;
 uint8_t nextCaller = 0;
 uint8_t pongEventSent = 0;
+int pongCounter = 0;
 
 uint8_t guilty = 0;
 
@@ -116,7 +117,9 @@ void ICACHE_FLASH_ATTR prepareGame(game_mode mode)
     }
 
     ws2812_push(frameBuffer, sizeof(frameBuffer));
+    allStrips();
     speed = SPEED_START;
+    pongCounter = 0;
     if (mode == PAUSE) {
         os_timer_arm(&pauseTimer, 12, 1);
     }
@@ -192,6 +195,10 @@ void ICACHE_FLASH_ATTR incSpeed()
         speed -= SPEED_INC;
     }
     
+    if (pongCounter >= UBER_MODE) {
+        speed = SPEED_UBER;
+    }
+    
     clearStrips(); 
     os_timer_arm(&frameTimer, speed, 1);
 }
@@ -222,27 +229,10 @@ void ICACHE_FLASH_ATTR pong(Player *player)
     }
     
     pongEventSent = 0;
+    pongCounter++;
     incSpeed();
     wasSafe = 0;
 }
-
-uint8_t ICACHE_FLASH_ATTR getGultyStrip(uint8_t button)
-{
-    switch(button) {
-        case 1:
-        case 2:
-            return 1;
-        case 3:
-        case 4:
-            return 2;
-        case 5:
-        case 6:
-            return 3;
-        default:
-            return 0;
-    }
-}
-
 
 // System task which will monitor players input
 void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
@@ -297,7 +287,7 @@ void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
                     os_printf("SCORE %d VS %d\n", player1.score, player2.score);
                     sendEvent(SOUND_SCORE, 1);
                     
-                    guilty = getGultyStrip(tempNext);
+                    guilty = tempNext;
                     guiltyDir = dir;
                     
                     clearStrips();
@@ -335,7 +325,7 @@ void ICACHE_FLASH_ATTR inputMonitor(os_event_t *events)
                     os_printf("SCORE %d VS %d\n", player1.score, player2.score);
                     sendEvent(SOUND_SCORE, 2);
 
-                    guilty = getGultyStrip(tempNext);
+                    guilty = tempNext;
                     guiltyDir = dir;
                     clearStrips();
                     
@@ -383,7 +373,7 @@ void ICACHE_FLASH_ATTR scoreTimerCallback(void *arg)
         }
         
         scoreRepeat = 0;
-        os_printf("CLEAR DONE SHOULD ANIMATE, MODE: %d, DIR: %d\n", gameMode, guiltyDir);
+        os_printf("CLEAR DONE SHOULD ANIMATE, guilty: %d, DIR: %d\n", guilty, guiltyDir);
     }
     
     int i;
@@ -400,7 +390,8 @@ void ICACHE_FLASH_ATTR scoreTimerCallback(void *arg)
     scoreRepeat++;
     led += guiltyDir;
     
-    if (scoreRepeat >= LEDS) {
+    //Give additional frame to clean up
+    if (scoreRepeat >= LEDS + 1) {
         os_timer_disarm(&scoreTimer);
 
         scoreRepeat = 0;
@@ -410,6 +401,7 @@ void ICACHE_FLASH_ATTR scoreTimerCallback(void *arg)
         if (player1.score == MAX_SCORE || player2.score == MAX_SCORE) {
             gameMode = WIN;
             speed = SPEED_START;
+            pongCounter = 0;
             os_timer_arm(&winTimer, 40, 1);
         } else {
             prepareGame(START);
@@ -434,6 +426,7 @@ void ICACHE_FLASH_ATTR winTimerCallback(void *arg)
             frameBuffer[i*3+1] = strobe;
         }
     }
+    allStrips();
     ws2812_push(frameBuffer, sizeof(frameBuffer));
 
     if (scoreRepeat == 0) {
@@ -479,7 +472,7 @@ void ICACHE_FLASH_ATTR frameTimerCallback(void *arg)
             led = LEDS - 1;
         }
         
-        guilty = getGultyStrip(activeStrip);
+        guilty = activeStrip;
         guiltyDir = dir;
                     
         clearStrips();

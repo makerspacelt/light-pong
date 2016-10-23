@@ -153,6 +153,8 @@ void ICACHE_FLASH_ATTR controllerDataReceived(void *arg, char *pdata, unsigned s
             uint8_t nr = *pdata++;
             player->buttons[nr] = *pdata++;
             
+            os_printf("BUTTON_NR: %d\n", nr);
+            
             os_printf("PLAYER BUTTON: %d-%d, 0x%02x\n", player->nr,  nr, player->buttons[nr]);
             break;     
     }

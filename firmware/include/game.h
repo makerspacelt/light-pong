@@ -3,10 +3,12 @@
 
 #define LEDS 300     // total ammount of leds
 #define SAFEZONE 30
+#define SPEED_UBER 3
 #define SPEED_MAX 6    // single minimum frame speed in ms
 #define SPEED_START 14
 #define SPEED_INC 2
 #define TRAIL 2
+#define UBER_MODE 12
 
 #define MAX_SCORE 10 // score limit
 #define SCORE_LEDS 14 // how much leds to light per 1 point
@@ -66,7 +68,7 @@ void pauseTimerCallback(void *arg);
 
 Player *getPlayer(uint8_t nr);
 Player *getPlayerByConnection(struct espconn *connection);
-uint8_t getGultyStrip(uint8_t button);
+void allStrips();
 void selectStrip(uint8_t strip);
 
 void sendEvent(uint8_t event, uint8_t playerScored);
